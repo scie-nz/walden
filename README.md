@@ -1,4 +1,5 @@
-Walden is a small data lake meant for solitary use.
+Walden is a small data lake meant for solitary use. Read more about it
+on [our website](https://scie.nz/walden).
 
 # Prerequisites
 
