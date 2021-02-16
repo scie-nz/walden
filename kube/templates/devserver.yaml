@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devserver
+  namespace: walden
+spec:
+  selector:
+    matchLabels:
+      app: devserver
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: devserver
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - image: scienz/walden-devserver
+        name: devserver
+        volumeMounts:
+        - name: devserver-persistent-storage
+          mountPath: /root
+        resources:
+          requests:
+            memory: "2048Mi"
+            cpu: "2000m"
+          limits:
+            memory: "4096Mi"
+            cpu: "8000m"
+      volumes:
+      - name: devserver-persistent-storage
+        persistentVolumeClaim:
+          claimName: devserver-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: devserver-pvc
+  namespace: walden
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---

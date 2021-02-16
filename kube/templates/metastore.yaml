@@ -143,3 +143,20 @@ spec:
       serviceAccountName: ""
 status: {}
 ---
+# Hive Metastore service, exposes port 9083 to other services (Presto /
+# Alluxio)
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: metastore
+  name: metastore
+  namespace: walden
+spec:
+  ports:
+  - port: 9083
+  selector:
+    app: metastore
+status:
+  loadBalancer: {}
+---
