@@ -25,7 +25,10 @@ spec:
         - name: POSTGRESQL_USERNAME
           value: metastore_user
         - name: POSTGRESQL_PASSWORD
-          value: password123_change_me
+          valueFrom:
+            secretKeyRef:
+              name: metastore-postgres-pass
+              key: pass
         ports:
         - containerPort: 5432
           name: postgres
