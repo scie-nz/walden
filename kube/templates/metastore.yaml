@@ -1,3 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: walden
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres
+  clusterIP: None
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,3 +74,72 @@ metadata:
 data:
   metastore-site.xml.template: |-
 {{ .Files.Get "configs/metastore-site.xml.template" | indent 4 }}
+---
+# Hive standalone metastore, keeps track of table metadata.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: metastore
+  name: metastore
+  namespace: walden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metastore
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: metastore
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: metastore
+        image: scienz/walden-metastore:latest
+        env:
+          - name: POSTGRES_HOST
+            value: postgres
+          - name: METASTORE_PORT
+            value: "9083"
+          - name: POSTGRES_USER
+            value: metastore_user
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: metastore-postgres-pass
+                key: pass
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: METASTORE_DB
+            value: "metastore"
+          - name: MINIO_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: minio-root
+                key: user
+          - name: MINIO_ACCESS_KEY_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: minio-root
+                key: pass
+        imagePullPolicy: "Always"
+        ports:
+        - containerPort: 9083
+        resources: {}
+        volumeMounts:
+          - mountPath: /apache-hive-metastore-3.1.2-bin/metastore-site.xml.template
+            name: config
+            subPath: metastore-site.xml.template
+            readOnly: false
+      volumes:
+        - name: config
+          configMap:
+            defaultMode: 420
+            name: metastore
+      restartPolicy: Always
+      serviceAccountName: ""
+status: {}
+---

@@ -28,6 +28,7 @@ RUN ln -s $HADOOP_HOME/share/hadoop/tools/lib/hadoop-aws-$HADOOP_VERSION.jar $HI
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 ENV HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$HIVE_HOME/lib/aws-java-sdk-bundle-1.11.563.jar
 ENV HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$HIVE_HOME/lib/hadoop-aws-$HADOOP_VERSION.jar
+ENV HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$HIVE_HOME/lib/postgresql-42.2.16.jar
 
 ENV METASTORE_AUX_JARS_PATH=/alluxio-2.4.0/client/alluxio-2.4.0-client.jar:$HIVE_HOME/lib/aws-java-sdk-bundle-1.11.563.jar:$HIVE_HOME/lib/hadoop-aws-$HADOOP_VERSION.jar
 
