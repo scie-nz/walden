@@ -67,7 +67,7 @@ kubectl -n walden exec --stdin --tty $DEVSERVER_POD -- /bin/bash
 
 3. Create a test MinIO bucket:
 
-Now that you are logged in to the devserver, you are ready to interact with the
+Now that you are logged in to the devserver, you are ready to interact with
 your glorious data pond! To do so you first need to create a MinIO bucket,
 where you will store your data:
 ```
