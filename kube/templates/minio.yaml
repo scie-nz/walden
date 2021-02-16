@@ -42,12 +42,6 @@ spec:
       containers:
       - name: minio
         image: minio/minio:RELEASE.2021-01-30T00-20-58Z
-        imagePullPolicy: IfNotPresent
-        command:
-        - /bin/bash
-        - -c
-        # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
-        - 'minio server http://minio-{0...3}.minio.${NAMESPACE}.svc.cluster.local:9000/data'
         env:
         - name: MINIO_ROOT_USER
           valueFrom:
@@ -63,6 +57,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
+        - 'minio server http://minio-{0...3}.minio.${NAMESPACE}.svc.cluster.local:9000/data'
         ports:
         - name: s3
           containerPort: 9000

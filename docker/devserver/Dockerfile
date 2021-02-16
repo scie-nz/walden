@@ -11,6 +11,8 @@ RUN echo 'trino-cli --server trino-coordinator-headless:8080 --catalog hive --sc
 RUN chmod a+rwx /usr/bin/trino
 
 RUN pip3 install presto-python-client minio
+RUN wget https://dl.min.io/client/mc/release/linux-amd64/mc
+RUN chmod +x mc
 
 WORKDIR /home/root
 COPY entrypoint.sh .
