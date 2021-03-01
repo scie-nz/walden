@@ -13,6 +13,7 @@ RUN chmod a+rwx /usr/bin/trino
 RUN pip3 install presto-python-client minio
 RUN wget https://dl.min.io/client/mc/release/linux-amd64/mc
 RUN chmod +x mc
+RUN DEBIAN_FRONTEND="noninteractive" apt-get -y install tzdata
 
 WORKDIR /home/root
 COPY entrypoint.sh .
