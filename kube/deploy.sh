@@ -21,6 +21,8 @@ if [ -z "$ORIG_NAMESPACE" ]; then
     ORIG_NAMESPACE=$TARGET_NAMESPACE
 fi
 reset_namespace() {
+    # if namespace doesn't exist, create it
+    kubectl create namespace walden --dry-run=client -o yaml | kubectl apply -f -
     echo "Switching back to namespace: $ORIG_NAMESPACE"
     kubectl config set-context --current --namespace=$ORIG_NAMESPACE
 }

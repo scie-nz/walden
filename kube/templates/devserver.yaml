@@ -14,8 +14,6 @@ spec:
       labels:
         app: devserver
     spec:
-      nodeSelector:
-        kubernetes.io/arch: amd64
       containers:
       - image: scienz/walden-devserver
         name: devserver
@@ -25,10 +23,8 @@ spec:
         resources:
           requests:
             memory: "2048Mi"
-            cpu: "2000m"
           limits:
             memory: "4096Mi"
-            cpu: "8000m"
         env:
           - name: HIVE_METASTORE_HOST
             value: metastore
@@ -54,6 +50,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: devserver-pvc
   namespace: walden
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "standard"
 spec:
   accessModes:
     - ReadWriteOnce

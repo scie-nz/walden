@@ -30,8 +30,6 @@ spec:
     spec:
       securityContext:
         fsGroup: 1001
-      nodeSelector:
-        kubernetes.io/arch: amd64
       containers:
       - image: bitnami/postgresql:latest
         name: postgres
@@ -98,8 +96,8 @@ spec:
       labels:
         app: metastore
     spec:
-      nodeSelector:
-        kubernetes.io/arch: amd64
+#      nodeSelector:
+#        kubernetes.io/arch: amd64
       containers:
       - name: metastore
         image: scienz/walden-metastore:latest
