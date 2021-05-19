@@ -15,10 +15,10 @@ RUN mkdir -p /root/.ssh \
 ENV DEBIAN_FRONTEND="noninteractive"
 
 ENV MVN_MIRROR="https://repo1.maven.org/maven2/"
-RUN curl -O https://repo1.maven.org/maven2/io/trino/trino-server/352/trino-server-352.tar.gz \
-  && tar -xvf trino-server-352.tar.gz
+RUN curl -O https://repo1.maven.org/maven2/io/trino/trino-server/356/trino-server-356.tar.gz \
+  && tar -xvf trino-server-356.tar.gz
 
-WORKDIR trino-server-352
+WORKDIR trino-server-356
 RUN mkdir -p etc
 RUN mkdir -p etc/catalog
 
@@ -26,6 +26,7 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN apt-get install -y uuid-runtime
 COPY entrypoint.sh /
 
+RUN apt-get update --fix-missing
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update
