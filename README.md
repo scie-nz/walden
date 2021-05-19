@@ -6,12 +6,12 @@ on [our website](https://scie.nz/walden).
 There are a few things you need before you create your Walden deployment:
 
 - You need a Linux environment from which to run the code. The code was
-  tested against Ubuntu 20.10.
+  tested against Ubuntu 20.04 LTS.
 - You need a Kubernetes Cluster. If you don't know what that is, check out
   [K3s](https://k3s.io/).
 - Your Kubernetes cluster needs to have at least 4 nodes (regular PCs are
-  fine), with at least 6GB of RAM. We run this on 4 machines w/ 8 GBs of RAM
-  each. It works.
+  fine), with at least 6GB of RAM. We run this on 4 machines w/ 16 GBs of
+  RAM each. It works.
 - You need to install [Helm](https://helm.sh/docs/intro/quickstart/), a
   Kubernetes templating engine. We use this to generate secrets.
 
@@ -21,19 +21,18 @@ There are a few things you need before you create your Walden deployment:
 ```
 git clone git@github.com:scie-nz/walden.git
 cd walden/kube
-./deploy.sh
+./deploy.sh # requires Helm and kubectl access to cluster
 ```
 
 You should see a whole bunch of text resulting from the deploy command. As
 long as no obvious errors show up, that's expected.
 
 To check the health of your cluster run:
-
 ```
 kubectl get pods -n walden
 ```
 
-(If you're using k3s, preface this command like so:
+(If you're using k3s locally, preface this command like so:
  `k3s kubectl get pods -n walden`)
 
 A healthy deployment looks like this:
@@ -61,7 +60,6 @@ a [tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/).
 Assuming the deployment succeeded, you can ssh into the pod corresponding to
 your devserver like so (make sure to replace `devserver-6c9fcf987c-9vznj`
 with your pod ID from `kubectl get pods -n walden`:
-
 ```
 export DEVSERVER_POD=devserver-6c9fcf987c-9vznj
 kubectl -n walden exec --stdin --tty $DEVSERVER_POD -- /bin/bash
@@ -69,16 +67,14 @@ kubectl -n walden exec --stdin --tty $DEVSERVER_POD -- /bin/bash
 
 3. Create a test MinIO bucket:
 
-Now that you are logged in to the devserver, you are ready to interact with the
+Now that you are logged in to the devserver, you are ready to interact with
 your glorious data pond! To do so you first need to create a MinIO bucket,
 where you will store your data:
-
 ```
 mc mb walden-minio/test
 ```
 
 You should see:
-
 ```
 Bucket created successfully: `walden-minio/test`
 ```
@@ -93,15 +89,14 @@ First, run (from the devserver shell):
 ```
 trino test
 ```
+
 This command starts a session of the trino CLI with the "test" schema. This
 schema does not actually exist in the metastore yet, so we need to create it:
-
 ```
 CREATE SCHEMA IF NOT EXISTS test WITH (location='s3a://test/');
 ```
 
 If you run `SHOW SCHEMAS` you should see:
-
 ```
        Schema
 --------------------
@@ -112,7 +107,6 @@ If you run `SHOW SCHEMAS` you should see:
 ```
 
 Now we can create a table:
-
 ```
 CREATE TABLE dim_foo(bar BIGINT);
 INSERT INTO dim_foo VALUES 1, 2, 3, 4;
@@ -120,7 +114,6 @@ SELECT bar FROM dim_foo;
 ```
 
 Assuming everything is working, you should now see the values:
-
 ```
  bar
 -----
