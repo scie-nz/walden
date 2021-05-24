@@ -32,4 +32,9 @@ RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update
 RUN apt-get install -y python3.8
 
+RUN apt-get install -y git
+RUN git clone https://github.com/scie-nz/TileDB-Trino.git
+RUN cd TileDB-Trino && git checkout 356 && ./mvnw package -DskipTests=true
+RUN mv TileDB-Trino/target/trino-tiledb-356.jar plugin/hive-hadoop2/
+
 ENTRYPOINT ["/entrypoint.sh"]
