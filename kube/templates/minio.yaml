@@ -33,8 +33,8 @@ spec:
         app: minio
     spec:
       # Minio complains if we have mixed architectures, so lock it to only run on AMD nodes for now. For example:
-      #nodeSelector:
-      #  kubernetes.io/arch: amd64
+      nodeSelector:
+        kubernetes.io/arch: amd64
       # Run containers as nobody:nogroup
       securityContext:
         runAsUser: 65534
@@ -71,13 +71,10 @@ spec:
           mountPath: /data
   volumeClaimTemplates:
   - metadata:
-      name: storage # pvc will be named "storage-minio-0"
-      annotations:
-        volume.beta.kubernetes.io/storage-class: "standard"
+      name: storage
     spec:
       accessModes:
       - ReadWriteOnce
-      storageClassName: local-path
       resources:
         requests:
           storage: 1Gi

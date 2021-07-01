@@ -50,12 +50,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: devserver-pvc
   namespace: walden
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "standard"
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
----
