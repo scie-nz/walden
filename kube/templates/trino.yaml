@@ -107,7 +107,7 @@ spec:
         resources: {}
         volumeMounts:
           - name: pre-install
-            mountPath: /trino-server-352/etc
+            mountPath: /trino-server-356/etc
       restartPolicy: Always
       serviceAccountName: ""
 ---
@@ -200,7 +200,7 @@ spec:
         resources: {}
         volumeMounts:
           - name: pre-install
-            mountPath: /trino-server-352/etc
+            mountPath: /trino-server-356/etc
       restartPolicy: Always
       serviceAccountName: ""
 ---

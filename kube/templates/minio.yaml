@@ -11,6 +11,7 @@ spec:
   - name: s3
     port: 9000
     targetPort: s3
+  clusterIP: None
   selector:
     app: minio
 ---
@@ -37,6 +38,7 @@ spec:
         kubernetes.io/arch: amd64
       # Run containers as nobody:nogroup
       securityContext:
+        fsGroup: 65534
         runAsUser: 65534
         runAsGroup: 65534
       containers:
