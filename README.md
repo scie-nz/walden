@@ -71,6 +71,7 @@ Now that you are logged in to the devserver, you are ready to interact with
 your glorious data pond! To do so you first need to create a MinIO bucket,
 where you will store your data:
 ```
+mc alias set walden-minio/ http://minio:9000 $MINIO_ACCESS_KEY_ID $MINIO_ACCESS_KEY_SECRET
 mc mb walden-minio/test
 ```
 

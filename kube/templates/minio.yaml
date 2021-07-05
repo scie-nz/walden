@@ -11,6 +11,21 @@ spec:
   - name: s3
     port: 9000
     targetPort: s3
+  selector:
+    app: minio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-headless
+  namespace: walden
+  labels:
+    app: minio
+spec:
+  ports:
+  - name: s3
+    port: 9000
+    targetPort: s3
   clusterIP: None
   selector:
     app: minio
@@ -23,7 +38,7 @@ metadata:
   labels:
     app: minio
 spec:
-  serviceName: minio
+  serviceName: minio-headless
   replicas: 4
   selector:
     matchLabels:
@@ -64,7 +79,7 @@ spec:
         - /bin/bash
         - -c
         # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
-        - 'minio server http://minio-{0...3}.minio.${NAMESPACE}.svc.cluster.local:9000/data'
+        - 'minio server http://minio-{0...3}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
         ports:
         - name: s3
           containerPort: 9000
