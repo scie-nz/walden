@@ -15,10 +15,10 @@ RUN mkdir -p /root/.ssh \
 ENV DEBIAN_FRONTEND="noninteractive"
 
 ENV MVN_MIRROR="https://repo1.maven.org/maven2/"
-RUN curl -O https://repo1.maven.org/maven2/io/trino/trino-server/356/trino-server-356.tar.gz \
-  && tar -xvf trino-server-356.tar.gz
+RUN curl -O https://repo1.maven.org/maven2/io/trino/trino-server/360/trino-server-360.tar.gz \
+  && tar -xvf trino-server-360.tar.gz
 
-WORKDIR trino-server-356
+WORKDIR trino-server-360
 RUN mkdir -p etc
 RUN mkdir -p etc/catalog
 
@@ -31,10 +31,5 @@ RUN apt-get install -y software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update
 RUN apt-get install -y python3.8
-
-RUN apt-get install -y git
-RUN git clone https://github.com/scie-nz/TileDB-Trino.git
-RUN cd TileDB-Trino && git checkout 356 && ./mvnw package -DskipTests=true
-RUN mv TileDB-Trino/target/trino-tiledb-356.jar plugin/hive-hadoop2/
 
 ENTRYPOINT ["/entrypoint.sh"]
