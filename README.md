@@ -134,3 +134,13 @@ Splits: 17 total, 17 done (100.00%)
 That's it, this is an easy way to get a small data lake working. Everything
 here is provided as-is, so your mileage may vary. Please report any bugs or
 issues and I will try to get to them.
+
+# Building using Kaniko
+
+```
+kubectl create secret -n walden docker-registry regcred --docker-server=https://index.docker.io/v1/ --docker-username=[your-docker-username] --docker-password=[your-docker-password]
+cd kube-build
+bash deploy.sh
+```
+
+
