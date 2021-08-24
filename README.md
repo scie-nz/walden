@@ -139,7 +139,7 @@ issues and I will try to get to them.
 
 ```
 kubectl create secret -n walden docker-registry regcred --docker-server=https://index.docker.io/v1/ --docker-username=[your-docker-username] --docker-password=[your-docker-password]
-kubect apply -f kube-build/templates/kaniko-devserver.yaml
+kubectl apply -f kube-build/templates/kaniko-devserver.yaml
 ```
 
 
