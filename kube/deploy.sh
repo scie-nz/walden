@@ -31,4 +31,11 @@ echo "Switching to namespace: $TARGET_NAMESPACE"
 kubectl create namespace $TARGET_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
 kubectl config set-context --current --namespace=$TARGET_NAMESPACE
 
-helm template -g $SCRIPT_DIR | kubectl apply -f -
+RELEASE_NAME=walden
+# force upgrade to work, otherwise get 'Error: UPGRADE FAILED: "secrets" has no deployed releases'
+# might be fixed with https://github.com/helm/helm/pull/7653/
+kubectl delete secret sh.helm.release.v1.${RELEASE_NAME}.v1 --ignore-not-found
+# test with:
+#   helm template --debug $RELEASE_NAME $SCRIPT_DIR
+# NOTE: Ideally we'd do 'helm template | kubectl apply' but this breaks lookup of randomly generated secrets.
+helm upgrade --install --debug ${RELEASE_NAME} $SCRIPT_DIR
