@@ -12,9 +12,9 @@ spec:
     image: gcr.io/kaniko-project/executor:debug
     args:
     - "--dockerfile=Dockerfile"
-    - "--context-sub-path=docker/devserver"
+    - "--context-sub-path=docker/trino"
     - "--context=git://github.com/scie-nz/walden.git"
-    - "--destination=scienz/walden-devserver"
+    - "--destination=scienz/walden-trino"
     volumeMounts:
     - name: docker-config
       mountPath: /kaniko/.docker
