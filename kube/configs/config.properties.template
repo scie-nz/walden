@@ -7,5 +7,4 @@ query.max-total-memory-per-node=4000MB
 task.writer-count=2
 discovery.uri=http://trino-coordinator-headless:8080
 $(bash -c "if [ $HOSTNAME == 'trino-coordinator-0' ]; then echo '
-discovery-server.enabled=true
 '; else echo ''; fi")

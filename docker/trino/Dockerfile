@@ -15,10 +15,10 @@ RUN mkdir -p /root/.ssh \
 ENV DEBIAN_FRONTEND="noninteractive"
 
 ENV MVN_MIRROR="https://repo1.maven.org/maven2/"
-RUN curl -O https://repo1.maven.org/maven2/io/trino/trino-server/368/trino-server-368.tar.gz \
-  && tar -xvf trino-server-368.tar.gz
+RUN curl -O https://repo1.maven.org/maven2/io/trino/trino-server/363/trino-server-363.tar.gz \
+  && tar -xvf trino-server-363.tar.gz && mv trino-server-363 trino-server
 
-WORKDIR trino-server-368
+WORKDIR trino-server
 RUN mkdir -p etc
 RUN mkdir -p etc/catalog
 
