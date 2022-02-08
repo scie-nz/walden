@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: properties-trino
+  name: trino
   namespace: walden
 data:
   node.properties.template: |
@@ -18,15 +18,29 @@ data:
   core-site.xml: |
 {{ .Files.Get "configs/core-site.xml" | indent 4 }}
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-coordinator-headless
+  namespace: walden
+  labels:
+    app: trino-coordinator
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+  selector:
+    app: trino-coordinator
+---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   labels:
     app: trino-coordinator
   name: trino-coordinator
   namespace: walden
 spec:
-  serviceName: "trino-coordinator"
   replicas: 1
   selector:
     matchLabels:
@@ -38,40 +52,21 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
-      volumes:
-        - name: properties-vol
-          configMap:
-            name: properties-trino
-        - name: pre-install
-          emptyDir: {}
-        - name: mem
-          emptyDir:
-            medium: "Memory"
-            sizeLimit: 1G
-      terminationGracePeriodSeconds: 10
       initContainers:
       - name: copy-ro-scripts
         image: busybox
         command:
-          - sh
-          - -c
-          - |
-            cp /conf/node.properties.template /opt/trino/conf/ &&
-            cp /conf/jvm.config /opt/trino/conf/ &&
-            cp /conf/config.properties.template /opt/trino/conf/ &&
-            mkdir -p /opt/trino/conf/catalog &&
-            cp /conf/hive.properties /opt/trino/conf/catalog &&
-            cp /conf/core-site.xml /opt/trino/conf/catalog &&
-            sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g"  /opt/trino/conf/catalog/hive.properties &&
-            sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g"  /opt/trino/conf/catalog/hive.properties &&
-            sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g"  /opt/trino/conf/catalog/core-site.xml &&
-            sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g"  /opt/trino/conf/catalog/core-site.xml &&
-            echo 'connector.name=tpch' > /opt/trino/conf/catalog/tpch.properties
-        volumeMounts:
-          - name: properties-vol
-            mountPath: /conf
-          - name: pre-install
-            mountPath: /opt/trino/conf
+        - sh
+        - -c
+        - |
+          cp -v /conf/node.properties.template /conf/jvm.config /conf/config.properties.template /conf-out/ &&
+          mkdir -p /conf-out/catalog &&
+          cp -v /conf/hive.properties /conf/core-site.xml /conf-out/catalog &&
+          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/hive.properties &&
+          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/hive.properties &&
+          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/core-site.xml &&
+          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/core-site.xml &&
+          echo 'connector.name=tpch' > /conf-out/catalog/tpch.properties
         env:
         - name: MINIO_ACCESS_KEY_ID
           valueFrom:
@@ -83,43 +78,40 @@ spec:
             secretKeyRef:
               name: minio-root
               key: pass
+        volumeMounts:
+        - name: configmap
+          mountPath: /conf
+        - name: pre-install
+          mountPath: /conf-out
       containers:
-      - env:
+      - name: trino-coordinator
+        image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
+        env:
         - name: HIVE_METASTORE_HOST
           value: metastore
         - name: HIVE_METASTORE_PORT
           value: "9083"
-        - name: MINIO_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: minio-root
-              key: user
-        - name: MINIO_ACCESS_KEY_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: minio-root
-              key: pass
-        image: scienz/walden-trino:latest
-        imagePullPolicy: Always
-        name: trino-coordinator
         ports:
-        - containerPort: 8080
-        resources: {}
+        - name: http
+          containerPort: 8080
         volumeMounts:
-          - name: pre-install
-            mountPath: /trino-server/etc
-      restartPolicy: Always
-      serviceAccountName: ""
+        - name: pre-install
+          mountPath: /trino-server/etc
+      volumes:
+      - name: configmap
+        configMap:
+          name: trino
+      - name: pre-install
+        emptyDir: {}
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   labels:
     app: trino-worker
   name: trino-worker
   namespace: walden
 spec:
-  serviceName: "trino-worker"
   replicas: 1
   selector:
     matchLabels:
@@ -131,40 +123,22 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
-      volumes:
-        - name: properties-vol
-          configMap:
-            name: properties-trino
-        - name: pre-install
-          emptyDir: {}
-        - name: mem
-          emptyDir:
-            medium: "Memory"
-            sizeLimit: 1G
       terminationGracePeriodSeconds: 10
       initContainers:
       - name: copy-ro-scripts
         image: busybox
         command:
-          - sh
-          - -c
-          - |
-            cp /conf/node.properties.template /opt/trino/conf/ &&
-            cp /conf/jvm.config /opt/trino/conf/ &&
-            cp /conf/config.properties.template /opt/trino/conf/ &&
-            mkdir -p /opt/trino/conf/catalog &&
-            cp /conf/hive.properties /opt/trino/conf/catalog &&
-            cp /conf/core-site.xml /opt/trino/conf/catalog &&
-            sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g"  /opt/trino/conf/catalog/hive.properties &&
-            sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g"  /opt/trino/conf/catalog/hive.properties &&
-            sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g"  /opt/trino/conf/catalog/core-site.xml &&
-            sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g"  /opt/trino/conf/catalog/core-site.xml &&
-            echo 'connector.name=tpch' > /opt/trino/conf/catalog/tpch.properties
-        volumeMounts:
-          - name: properties-vol
-            mountPath: /conf
-          - name: pre-install
-            mountPath: /opt/trino/conf
+        - sh
+        - -c
+        - |
+          cp -v /conf/node.properties.template /conf/jvm.config /conf/config.properties.template /conf-out/ &&
+          mkdir -p /conf-out/catalog &&
+          cp -v /conf/hive.properties /conf/core-site.xml /conf-out/catalog &&
+          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/hive.properties &&
+          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/hive.properties &&
+          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/core-site.xml &&
+          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/core-site.xml &&
+          echo 'connector.name=tpch' > /conf-out/catalog/tpch.properties
         env:
         - name: MINIO_ACCESS_KEY_ID
           valueFrom:
@@ -176,49 +150,28 @@ spec:
             secretKeyRef:
               name: minio-root
               key: pass
+        volumeMounts:
+        - name: properties
+          mountPath: /conf
+        - name: pre-install
+          mountPath: /conf-out
       containers:
-      - env:
+      - name: trino-worker
+        image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
+        env:
         - name: HIVE_METASTORE_HOST
           value: metastore
         - name: HIVE_METASTORE_PORT
           value: "9083"
-        - name: MINIO_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: minio-root
-              key: user
-        - name: MINIO_ACCESS_KEY_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: minio-root
-              key: pass
-        image: scienz/walden-trino:latest
-        imagePullPolicy: "Always"
-        name: trino-worker
         ports:
-        - containerPort: 8080
-        resources: {}
+        - name: http
+          containerPort: 8080
         volumeMounts:
-          - name: pre-install
-            mountPath: /trino-server/etc
-      restartPolicy: Always
-      serviceAccountName: ""
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: trino-coordinator
-  name: trino-coordinator-headless
-  namespace: walden
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-  - name: "8080"
-    port: 8080
-    targetPort: 8080
-  selector:
-    app: trino-coordinator
-status:
-  loadBalancer: {}
+        - name: pre-install
+          mountPath: /trino-server/etc
+      volumes:
+      - name: properties
+        configMap:
+          name: trino
+      - name: pre-install
+        emptyDir: {}

@@ -1,35 +1,32 @@
-FROM azul/zulu-openjdk:11
+# Use whatever is the latest JRE 11.0.x version
+# -> https://hub.docker.com/r/azul/zulu-openjdk/tags?page=1&name=11
+# Trino requires JRE 11, minimum 11.0.11 - newer versions are not tested
+FROM azul/zulu-openjdk:11.0.14
 
-RUN apt-get update && apt-get -y install gnupg2 curl
-RUN echo "presto soft nofile 131072" >> /etc/security/limits.conf
-RUN echo "presto hard nofile 131072" >> /etc/security/limits.conf
+ENV DEBIAN_FRONTEND="noninteractive" \
+  MVN_MIRROR="https://repo1.maven.org/maven2/"
 
-RUN apt-get -y install keychain
-RUN mkdir -p /root/.ssh \
-  && ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa \
-  && chmod 600 /root/.ssh/id* \
-  && cp /root/.ssh/id_rsa /etc/ssh/ssh_host_key \
-  && cat /root/.ssh/id_rsa.pub >>/root/.ssh/authorized_keys \
+RUN apt-get update --fix-missing \
+  && apt-get -y install curl gnupg2 keychain python3.8 software-properties-common uuid-runtime \
+  && add-apt-repository ppa:deadsnakes/ppa \
+  && apt-get update --fix-missing \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists /var/cache/apt/archives \
+  \
+  && ln -s /usr/bin/python3 /usr/bin/python \
+  \
+  && echo "presto soft nofile 131072" >> /etc/security/limits.conf \
+  && echo "presto hard nofile 131072" >> /etc/security/limits.conf \
   && echo "session required pam_limits.so" >> /etc/pam.d/common-session
 
-ENV DEBIAN_FRONTEND="noninteractive"
+# Install Trino to /trino-server as a separate stage at the end.
+# Maximizes caching when switching versions.
+ENV TRINO_VERSION=370
 
-ENV MVN_MIRROR="https://repo1.maven.org/maven2/"
-RUN curl -O https://repo1.maven.org/maven2/io/trino/trino-server/368/trino-server-368.tar.gz \
-  && tar -xvf trino-server-368.tar.gz && mv trino-server-368 trino-server
+RUN curl https://repo1.maven.org/maven2/io/trino/trino-server/${TRINO_VERSION}/trino-server-${TRINO_VERSION}.tar.gz | tar xzf - \
+  && mv -v trino-server-${TRINO_VERSION} trino-server \
+  && mkdir -p trino-server/etc/catalog
 
-WORKDIR trino-server
-RUN mkdir -p etc
-RUN mkdir -p etc/catalog
-
-RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN apt-get install -y uuid-runtime
-COPY entrypoint.sh /
-
-RUN apt-get update --fix-missing
-RUN apt-get install -y software-properties-common
-RUN add-apt-repository ppa:deadsnakes/ppa
-RUN apt-get update
-RUN apt-get install -y python3.8
-
+COPY entrypoint.sh /entrypoint.sh
+WORKDIR /trino-server
 ENTRYPOINT ["/entrypoint.sh"]

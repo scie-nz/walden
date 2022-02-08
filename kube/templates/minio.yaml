@@ -48,9 +48,10 @@ spec:
       labels:
         app: minio
     spec:
-      # Minio complains if we have mixed architectures, so lock it to only run on AMD nodes for now. For example:
+      # Minio is a good candidate for running on ARM when available.
+      # However, Minio complains if we have mixed architectures, so lock it to only run on a single arch.
       nodeSelector:
-        kubernetes.io/arch: amd64
+        kubernetes.io/arch: {{ .Values.minio_arch }}
       # Run containers as nobody:nogroup
       securityContext:
         fsGroup: 65534
@@ -58,7 +59,7 @@ spec:
         runAsGroup: 65534
       containers:
       - name: minio
-        image: minio/minio:RELEASE.2021-01-30T00-20-58Z
+        image: minio/minio:RELEASE.2022-02-05T04-40-59Z
         env:
         - name: MINIO_ROOT_USER
           valueFrom:
@@ -74,7 +75,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        imagePullPolicy: IfNotPresent
         command:
         - /bin/bash
         - -c

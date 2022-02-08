@@ -1,25 +1,21 @@
-Walden is a small data lake meant for solitary use. Read more about it
-on [our website](https://scie.nz/walden).
+# Walden
 
-# Prerequisites
+Walden is a small data lake meant for solitary use. Read more about it on [our website](https://scie.nz/walden).
+
+## Prerequisites
 
 There are a few things you need before you create your Walden deployment:
 
-- You need a Linux environment from which to run the code. The code was
-  tested against Ubuntu 20.04 LTS.
-- You need a Kubernetes Cluster. If you don't know what that is, check out
-  [K3s](https://k3s.io/).
-- Your Kubernetes cluster needs to have at least 4 nodes (regular PCs are
-  fine), with at least 6GB of RAM. We run this on 4 machines w/ 16 GBs of
-  RAM each. It works.
-- You need to install [Helm](https://helm.sh/docs/intro/quickstart/), a
-  Kubernetes templating engine. We use this to generate secrets.
+- You need a Linux environment from which to run the code. The code was tested against Ubuntu 20.04 LTS as well as Arch Linux.
+- You need a Kubernetes Cluster. If you don't know what that is, check out [K3s](https://k3s.io/).
+- Your Kubernetes cluster needs to have at least 4 nodes (regular PCs are fine), with at least 6GB of RAM. We run this on 4 machines, each with 16 GB RAM. It works.
+- You need to install [Helm](https://helm.sh/docs/intro/quickstart/), a Kubernetes templating engine. We use this to generate secrets and handle some minor templating.
 
-# Running Walden
+## Running Walden
 
-1. Deploy Walden:
+Deploy Walden:
 ```
-git clone git@github.com:scie-nz/walden.git
+git clone https://github.com/scie-nz/walden
 cd walden/kube
 ./deploy.sh # requires Helm and kubectl access to cluster
 ```
@@ -36,18 +32,17 @@ kubectl get pods -n walden
  `k3s kubectl get pods -n walden`)
 
 A healthy deployment looks like this:
-
 ```
-NAME                         READY   STATUS    RESTARTS   AGE
-minio-1                      1/1     Running   0          167m
-minio-0                      1/1     Running   0          166m
-minio-2                      1/1     Running   0          166m
-minio-3                      1/1     Running   0          166m
-postgres-7c989d676c-k5ghj    1/1     Running   0          160m
-metastore-7786547cd5-2pnht   1/1     Running   0          142m
-trino-worker-0               1/1     Running   0          85m
-trino-coordinator-0          1/1     Running   0          85m
-devserver-6c9fcf987c-9vznj   1/1     Running   0          19m
+NAME                               READY   STATUS    RESTARTS   AGE
+minio-0                            1/1     Running   0          62s
+minio-1                            1/1     Running   0          53s
+postgres-0                         1/1     Running   0          62s
+minio-2                            1/1     Running   0          40s
+trino-worker-86d9484f75-zlwwm      1/1     Running   0          62s
+minio-3                            1/1     Running   0          31s
+trino-coordinator-8c6bc455-ggsnx   1/1     Running   0          62s
+devserver-65d668b5c6-xhr6n         1/1     Running   0          62s
+metastore-5bf8c4bddf-rjwh7         1/1     Running   0          62s
 ```
 
 If something has gone wrong, `kubectl logs [name of pod]` should help
@@ -55,14 +50,13 @@ most of the time. If you need to do more debugging because something is failing
 but are new to Kubernetes, about now would be a good time to go through
 a [tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/).
 
-2. SSH into your devserver:
+2. Shell into your devserver:
 
 Assuming the deployment succeeded, you can ssh into the pod corresponding to
 your devserver like so (make sure to replace `devserver-6c9fcf987c-9vznj`
 with your pod ID from `kubectl get pods -n walden`:
 ```
-export DEVSERVER_POD=devserver-6c9fcf987c-9vznj
-kubectl -n walden exec --stdin --tty $DEVSERVER_POD -- /bin/bash
+$ kubectl exec --stdin --tty -n walden deployment/devserver -- /bin/bash
 ```
 
 3. Create a test MinIO bucket:
@@ -71,12 +65,10 @@ Now that you are logged in to the devserver, you are ready to interact with
 your glorious data pond! To do so you first need to create a MinIO bucket,
 where you will store your data:
 ```
-mc alias set walden-minio/ http://minio:9000 $MINIO_ACCESS_KEY_ID $MINIO_ACCESS_KEY_SECRET
-mc mb walden-minio/test
-```
+devserver# mc alias set walden-minio/ http://minio:9000 $MINIO_ACCESS_KEY_ID $MINIO_ACCESS_KEY_SECRET
+Added `walden-minio` successfully.
 
-You should see:
-```
+devserver# mc mb walden-minio/test
 Bucket created successfully: `walden-minio/test`
 ```
 
@@ -88,17 +80,19 @@ bucket called "test".
 
 First, run (from the devserver shell):
 ```
-trino test
+devserver# trino test
 ```
 
 This command starts a session of the trino CLI with the "test" schema. This
 schema does not actually exist in the metastore yet, so we need to create it:
 ```
-CREATE SCHEMA IF NOT EXISTS test WITH (location='s3a://test/');
+trino:test> CREATE SCHEMA IF NOT EXISTS test WITH (location='s3a://test/');
+CREATE SCHEMA
 ```
 
 If you run `SHOW SCHEMAS` you should see:
 ```
+trino:test> SHOW SCHEMAS;
        Schema
 --------------------
  default
@@ -107,15 +101,18 @@ If you run `SHOW SCHEMAS` you should see:
 (3 rows)
 ```
 
-Now we can create a table:
+Now we can create a table and store some data:
 ```
-CREATE TABLE dim_foo(bar BIGINT);
-INSERT INTO dim_foo VALUES 1, 2, 3, 4;
-SELECT bar FROM dim_foo;
+trino:test> CREATE TABLE dim_foo(bar BIGINT);
+CREATE TABLE
+
+trino:test> INSERT INTO dim_foo VALUES 1, 2, 3, 4;
+INSERT: 4 rows
 ```
 
-Assuming everything is working, you should now see the values:
+Assuming everything is working, you should be able to query the stored values:
 ```
+trino:test> SELECT bar FROM dim_foo;
  bar
 -----
    1
@@ -124,22 +121,41 @@ Assuming everything is working, you should now see the values:
    4
 (4 rows)
 
-Query 20210216_061509_00014_iymzc, FINISHED, 1 node
-Splits: 17 total, 17 done (100.00%)
-0.26 [4 rows, 0B] [15 rows/s, 0B/s]
+Query 20220208_051155_00006_zfgnn, FINISHED, 1 node
+Splits: 2 total, 2 done (100.00%)
+0.36 [4 rows, 250B] [11 rows/s, 691B/s]
 ```
 
-# Conclusions
+## Conclusions
 
-That's it, this is an easy way to get a small data lake working. Everything
-here is provided as-is, so your mileage may vary. Please report any bugs or
-issues and I will try to get to them.
+That's it, this is an easy way to get a small data lake working.
+This is meant to be a fully functional starting point that can be expanded and customized to fit your needs.
+Everything here is provided as-is, so your mileage may vary.
+Please report any bugs or issues and we will try to get to them.
 
-# Building using Kaniko
+## Other Notes/Reference
 
+### Building images using Kaniko
+
+Cheat sheet for building images from within an existing cluster.
+This can also be done locally via the Docker CLI or similar.
 ```
 kubectl create secret -n walden docker-registry regcred --docker-server=https://index.docker.io/v1/ --docker-username=[your-docker-username] --docker-password=[your-docker-password]
 kubectl apply -f kube-build/templates/kaniko-devserver.yaml
 ```
+
+After building/pushing new release images, update the default `WALDEN_VERSION` in `kube/deploy.sh`.
+
+### Deploying with custom images
+
+Walden can be deployed with custom images from your registry/organization.
+
+1. Assign registry/org prefix (default `docker.io/scienz`): `export WALDEN_ORG=myregistry.example/myorg`
+2. (Optional) Assign tag suffixes (default current `YYYY.mm.dd`):
+    - Shared tag across images: `export WALDEN_TAG=1234`
+    - Individual image overrides: `export WALDEN_DEVSERVER_TAG=1234 WALDEN_METASTORE_TAG=2345 WALDEN_TRINO_TAG=3456`
+2. Build and push images: Run `docker/*/build.sh` and `docker/*/push.sh`
+3. Deploy environment using the images: Run `kube/deploy.sh`
+
 
 
