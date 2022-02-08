@@ -45,7 +45,16 @@ devserver-65d668b5c6-xhr6n         1/1     Running   0          62s
 metastore-5bf8c4bddf-rjwh7         1/1     Running   0          62s
 ```
 
-If something has gone wrong, `kubectl logs [name of pod]` should help
+By default, Walden expects your cluster to have at least four machines/nodes.
+If you don't have four nodes, you may see MinIO pods that are stuck in `Pending`.
+You can get things unstuck by manually editing the `minio` StatefulSet and removing
+the `affinity` block, allowing multiple MinIO pods to deploy on the same machine:
+```
+# Edit MinIO StatefulSet, remove affinity block
+$ kubectl edit statefulset -n walden minio
+```
+
+If something else has gone wrong, `kubectl logs -n walden [name of pod]` should help
 most of the time. If you need to do more debugging because something is failing
 but are new to Kubernetes, about now would be a good time to go through
 a [tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/).

@@ -41,7 +41,8 @@ kubectl delete secret sh.helm.release.v1.${RELEASE_NAME}.v1 --ignore-not-found
 # Deployment options:
 # - WALDEN_ORG: Allow overriding the registry/organization for pulling all walden images.
 # - WALDEN_TAG/WALDEN_*_TAG: Configure tags for all walden images, or for individual images.
-# - MINIO_ARCH: In mixed-arch clusters, allow running minio on ARM nodes.
+# - MINIO_REPLICAS: Number of replicas for MinIO, the default/minimum is 4.
+# - MINIO_ARCH: In mixed-arch clusters, allows running minio on ARM nodes.
 # NOTE: Ideally we'd do 'helm template | kubectl apply' but this breaks lookup of randomly generated secrets.
 helm upgrade \
   --install \
@@ -50,5 +51,6 @@ helm upgrade \
   --set walden_devserver_tag=${WALDEN_DEVSERVER_TAG:=${WALDEN_TAG:=$WALDEN_VERSION}} \
   --set walden_metastore_tag=${WALDEN_METASTORE_TAG:=${WALDEN_TAG:=$WALDEN_VERSION}} \
   --set walden_trino_tag=${WALDEN_TRINO_TAG:=${WALDEN_TAG:=$WALDEN_VERSION}} \
+  --set minio_replicas=${MINIO_REPLICAS:=4} \
   --set minio_arch=${MINIO_ARCH:=amd64} \
   ${RELEASE_NAME} $SCRIPT_DIR

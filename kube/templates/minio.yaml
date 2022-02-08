@@ -39,7 +39,7 @@ metadata:
     app: minio
 spec:
   serviceName: minio-headless
-  replicas: 4
+  replicas: {{ .Values.minio_replicas }}
   selector:
     matchLabels:
       app: minio
@@ -52,6 +52,18 @@ spec:
       # However, Minio complains if we have mixed architectures, so lock it to only run on a single arch.
       nodeSelector:
         kubernetes.io/arch: {{ .Values.minio_arch }}
+      # Ensure that each minio pod is placed on a separate node from other minio pods.
+      # If you do not have at least four nodes, you can comment this out.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: "app"
+                  operator: In
+                  values:
+                  - minio
+            topologyKey: "kubernetes.io/hostname"
       # Run containers as nobody:nogroup
       securityContext:
         fsGroup: 65534
@@ -75,11 +87,14 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: MINIO_REPLICAS
+          value: "{{ .Values.minio_replicas }}"
         command:
         - /bin/bash
         - -c
+        # Must provide each pod with the total replica count.
         # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
-        - 'minio server http://minio-{0...3}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
+        - 'minio server http://minio-{1...${MINIO_REPLICAS}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
         ports:
         - name: s3
           containerPort: 9000
