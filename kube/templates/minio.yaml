@@ -87,14 +87,15 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: MINIO_REPLICAS
-          value: "{{ .Values.minio_replicas }}"
+        - name: MINIO_MAX_HOSTNUM
+          # For N pods, we want '0...N-1' to match pod hostnames, see below.
+          value: "{{ sub .Values.minio_replicas 1 }}"
         command:
         - /bin/bash
         - -c
         # Must provide each pod with the total replica count.
         # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
-        - 'minio server http://minio-{1...${MINIO_REPLICAS}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
+        - 'minio server http://minio-{0...${MINIO_MAX_HOSTNUM}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
         ports:
         - name: s3
           containerPort: 9000
