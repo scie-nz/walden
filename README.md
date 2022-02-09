@@ -191,6 +191,48 @@ Please report any bugs or issues and we will try to get to them.
 
 ## Other Notes/Reference
 
+### Adding external data sources
+
+You can also use existing databases with Walden by [connecting them to Trino](https://trino.io/docs/current/connector.html) and then [enabling them in Superset](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers).
+
+1. Edit the `trino-catalog` ConfigMap, adding a `.properties` file entry for [the connector you want](https://trino.io/docs/current/connector.html).
+    ```
+    $ kubectl edit configmap -n walden trino-catalog
+    ```
+2. Restart the `trino-*` pods for the change to take effect.
+    ```
+    $ kubectl delete pod -n walden trino-coordinator-xxxx-yyyy trino-worker-xxxx-yyyy
+    ```
+
+Now we should be able to add the new Trino schema to Superset:
+
+1. Open the Superset UI and log in as described above.
+    ```
+    $ kubectl get secret -n walden superset-admin -o 'jsonpath={.data.pass}' | base64 -d && echo
+    lONGpASSWoRD64HERE
+    $ kubectl port-forward -n walden deployment/superset 8088
+    ```
+2. Go to `Data` > `Databases` via the top menu and click the `+ Database` on the upper right to add a new Database.
+3. Select the `Trino` database type from the pull down menu.
+4. Set the `SQLAlchemy URI` to `trino://trino:8080/<NAME>`, where `<NAME>` matches the FILE NAME of the `.properties` file added earlier. For example, if the file was named `mydb.properties`, then you should enter `trino://trino:8080/mydb` here.
+5. (OPTIONAL) Switch to the `Advanced` tab and enable the following:
+    - SQL Lab:
+        - `Expose database in SQL Lab`, followed by...
+        - `Allow Multi Schema Metadata Fetch` (optional: don't enable if the DB is very large)
+        - `Enable query cost estimation`
+        - `Allow this database to be explored`
+    - Performance:
+        - `Asynchronous query execution`
+6. Click `Connect` to create the new Database entry.
+
+The new Database entry can be reconfigured again later if needed.
+
+Now you can switch to `SQL Lab` > `SQL Editor` and preview the new Database, confirming that it looks as expected.
+
+Check the [Trino](https://trino.io/docs/current/connector.html) and [Superset](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers) docs for any additional information on configuring particular database types.
+
+![Screenshot of Superset UI showing external PostGIS data via Trino](superset.png)
+
 ### Building images using Kaniko
 
 Cheat sheet for building images from within an existing cluster.
@@ -224,5 +266,3 @@ The MinIO images are multi-arch and so can be configured to run on nodes with no
 In our case, we have a mixed-architecture cluster where several `arm64` Raspberry Pis provide local storage, making them a convenient place for running the MinIO pods.
 To deploy with MinIO nodes on a different architecture, deploy with `MINIO_ARCH=arm64`.
 Note that we do not support custom architectures for the `walden-*` images themselves, as the underlying software doesn't deal with it well.
-
-
