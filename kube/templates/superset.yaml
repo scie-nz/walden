@@ -1,0 +1,265 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: superset
+  namespace: walden
+  labels:
+    app: superset
+data:
+  superset_config.py: |
+{{ .Files.Get "configs/superset_config.py" | indent 4 }}
+  superset_datasources.yaml: |
+{{ .Files.Get "configs/superset_datasources.yaml" | indent 4 }}
+  superset_init.sh: |
+{{ .Files.Get "configs/superset_init.sh" | indent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset
+  namespace: walden
+  labels:
+    app: superset
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8088
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: superset
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset-worker
+  namespace: walden
+  labels:
+    app: superset-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset-worker
+  template:
+    metadata:
+      labels:
+        app: superset-worker
+    spec:
+      nodeSelector:
+        # We only build an amd64 superset image
+        kubernetes.io/arch: amd64
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo 'waiting for postgres'; sleep 1; done
+        env:
+        - name: POSTGRES_HOST
+          value: superset-postgres
+        - name: POSTGRES_PORT
+          value: "5432"
+      containers:
+      - name: superset
+        image: {{ .Values.walden_docker_org }}/walden-superset:{{ .Values.walden_superset_tag }}
+        command:
+        - celery
+        - --app=superset.tasks.celery_app:app
+        - worker
+        env:
+        # Celery app invokes superset_config.py
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: superset-key
+              key: secret_key
+        #- name: MAPBOX_API_KEY
+        #  value: ""
+        - name: REDIS_HOST
+          value: superset-redis
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: superset-redis
+              key: pass
+        - name: POSTGRES_HOST
+          value: superset-postgres
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: superset-postgres
+              key: user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: superset-postgres
+              key: pass
+        volumeMounts:
+        - name: config
+          mountPath: "/app/pythonpath"
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: superset
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset
+  namespace: walden
+  labels:
+    app: superset
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset
+  template:
+    metadata:
+      labels:
+        app: superset
+    spec:
+      nodeSelector:
+        # We only build an amd64 superset image
+        kubernetes.io/arch: amd64
+      initContainers:
+
+      - name: wait-for-postgres
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo 'waiting for postgres'; sleep 1; done
+        env:
+        - name: POSTGRES_HOST
+          value: superset-postgres
+        - name: POSTGRES_PORT
+          value: "5432"
+
+      containers:
+
+      - name: superset
+        image: {{ .Values.walden_docker_org }}/walden-superset:{{ .Values.walden_superset_tag }}
+        # Newer images should have /usr/bin/run-server.sh, but as of 1.4.0 it doesn't exist yet.
+        # In the meantime (or indefinitely?) we can just run the underlying gunicorn command directly.
+        command:
+        - /bin/sh
+        - -c
+        - |
+          gunicorn \
+              --bind 0.0.0.0:8088 \
+              --access-logfile - \
+              --error-logfile - \
+              --workers 1 \
+              --worker-class gthread \
+              --threads 20 \
+              --timeout 60 \
+              --limit-request-line 0 \
+              --limit-request-field_size 0 \
+              "superset.app:create_app()"
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: superset-key
+              key: secret_key
+        #- name: MAPBOX_API_KEY
+        #  value: ""
+        - name: REDIS_HOST
+          value: superset-redis
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: superset-redis
+              key: pass
+        - name: POSTGRES_HOST
+          value: superset-postgres
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: superset-postgres
+              key: user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: superset-postgres
+              key: pass
+        volumeMounts:
+        - name: config
+          mountPath: "/app/pythonpath"
+          readOnly: true
+        ports:
+        - name: http
+          containerPort: 8088
+          protocol: TCP
+
+      - name: init
+        image: {{ .Values.walden_docker_org }}/walden-superset:{{ .Values.walden_superset_tag }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          . /app/pythonpath/superset_init.sh;
+          echo 'Done, sleeping forever';
+          touch /tmp/ready;
+          sleep infinity
+        env:
+        # Used by superset_init.sh
+        - name: ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              name: superset-admin
+              key: user
+        - name: ADMIN_PASS
+          valueFrom:
+            secretKeyRef:
+              name: superset-admin
+              key: pass
+        # "Upgrading DB schema" step invokes superset_config.py
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: superset-key
+              key: secret_key
+        - name: REDIS_HOST
+          value: superset-redis
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: superset-redis
+              key: pass
+        - name: POSTGRES_HOST
+          value: superset-postgres
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: superset-postgres
+              key: user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: superset-postgres
+              key: pass
+        startupProbe:
+          # Check that 'init' sidecar has finished
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - if [ ! -f /tmp/ready ]; then exit 1; fi
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 90
+        volumeMounts:
+        - name: config
+          mountPath: /app/pythonpath
+          readOnly: true
+
+      volumes:
+      - name: config
+        configMap:
+          name: superset

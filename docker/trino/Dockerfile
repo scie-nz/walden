@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND="noninteractive" \
   MVN_MIRROR="https://repo1.maven.org/maven2/"
 
 RUN apt-get update --fix-missing \
-  && apt-get -y install curl gnupg2 keychain python3.8 software-properties-common uuid-runtime \
+  && apt-get -y install apache2-utils curl gnupg2 keychain python3.8 software-properties-common uuid-runtime \
   && add-apt-repository ppa:deadsnakes/ppa \
   && apt-get update --fix-missing \
   && apt-get clean \

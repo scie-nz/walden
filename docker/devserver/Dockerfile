@@ -12,7 +12,7 @@ RUN apt-get update \
 ENV TRINO_VERSION=370
 
 RUN curl -o /usr/bin/trino-cli https://repo1.maven.org/maven2/io/trino/trino-cli/${TRINO_VERSION}/trino-cli-${TRINO_VERSION}-executable.jar \
-  && echo 'trino-cli --server trino-coordinator-headless:8080 --catalog hive --schema $1' > /usr/bin/trino \
+  && echo 'trino-cli --server trino:8080 --user "${TRINO_USER}" --catalog hive --schema $1' > /usr/bin/trino \
   && chmod +x /usr/bin/trino-cli /usr/bin/trino \
   \
   && pip3 install presto-python-client minio \

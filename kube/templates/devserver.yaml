@@ -15,6 +15,7 @@ spec:
         app: devserver
     spec:
       nodeSelector:
+        # We only build an amd64 devserver image
         kubernetes.io/arch: amd64
       containers:
       - image: {{ .Values.walden_docker_org }}/walden-devserver:{{ .Values.walden_devserver_tag }}
@@ -41,6 +42,16 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: minio-root
+                key: pass
+          - name: TRINO_USER
+            valueFrom:
+              secretKeyRef:
+                name: trino-admin
+                key: user
+          - name: TRINO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: trino-admin
                 key: pass
       volumes:
       - name: devserver-persistent-storage

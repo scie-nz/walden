@@ -3,6 +3,8 @@ kind: ConfigMap
 metadata:
   name: metastore
   namespace: walden
+  labels:
+    app: metastore
 data:
   metastore-site.xml.template: |-
 {{ .Files.Get "configs/metastore-site.xml.template" | indent 4 }}
@@ -41,36 +43,52 @@ spec:
         app: metastore
     spec:
       nodeSelector:
+        # We only build an amd64 metastore image
         kubernetes.io/arch: amd64
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo 'waiting for postgres'; sleep 1; done
+        env:
+        - name: POSTGRES_HOST
+          value: metastore-postgres
+        - name: POSTGRES_PORT
+          value: "5432"
       containers:
       - name: metastore
         image: {{ .Values.walden_docker_org }}/walden-metastore:{{ .Values.walden_metastore_tag }}
         env:
-          - name: POSTGRES_HOST
-            value: postgres
-          - name: METASTORE_PORT
-            value: "9083"
-          - name: POSTGRES_USER
-            value: metastore_user
-          - name: POSTGRES_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: metastore-postgres-pass
-                key: pass
-          - name: POSTGRES_PORT
-            value: "5432"
-          - name: METASTORE_DB
-            value: "metastore"
-          - name: MINIO_ACCESS_KEY_ID
-            valueFrom:
-              secretKeyRef:
-                name: minio-root
-                key: user
-          - name: MINIO_ACCESS_KEY_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: minio-root
-                key: pass
+        - name: METASTORE_PORT
+          value: "9083"
+        - name: POSTGRES_HOST
+          value: metastore-postgres
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: metastore-postgres
+              key: user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: metastore-postgres
+              key: pass
+        - name: METASTORE_DB
+          value: metastore
+        - name: MINIO_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: minio-root
+              key: user
+        - name: MINIO_ACCESS_KEY_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: minio-root
+              key: pass
         ports:
         - containerPort: 9083
           name: metastore

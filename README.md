@@ -34,15 +34,19 @@ kubectl get pods -n walden
 A healthy deployment looks like this:
 ```
 NAME                               READY   STATUS    RESTARTS   AGE
-minio-0                            1/1     Running   0          62s
-minio-1                            1/1     Running   0          53s
-postgres-0                         1/1     Running   0          62s
-minio-2                            1/1     Running   0          40s
-trino-worker-86d9484f75-zlwwm      1/1     Running   0          62s
-minio-3                            1/1     Running   0          31s
-trino-coordinator-8c6bc455-ggsnx   1/1     Running   0          62s
-devserver-65d668b5c6-xhr6n         1/1     Running   0          62s
-metastore-5bf8c4bddf-rjwh7         1/1     Running   0          62s
+devserver-65d668b5c6-s62m7         1/1     Running   0          49s
+metastore-8696bf6b46-455qx         1/1     Running   0          49s
+superset-worker-69cd7c966-pwsp8    1/1     Running   0          49s
+superset-postgres-0                1/1     Running   0          48s
+metastore-postgres-0               1/1     Running   0          48s
+superset-66fb584c7d-wc8c4          2/2     Running   0          48s
+trino-coordinator-8c6bc455-w2qdw   1/1     Running   0          48s
+trino-worker-86d9484f75-7j8cw      1/1     Running   0          47s
+superset-redis-0                   1/1     Running   0          47s
+minio-0                            1/1     Running   0          47s
+minio-1                            1/1     Running   0          36s
+minio-2                            1/1     Running   0          27s
+minio-3                            1/1     Running   0          21s
 ```
 
 By default, Walden expects your cluster to have at least four machines/nodes.
@@ -65,7 +69,7 @@ Assuming the deployment succeeded, you can ssh into the pod corresponding to
 your devserver like so (make sure to replace `devserver-6c9fcf987c-9vznj`
 with your pod ID from `kubectl get pods -n walden`:
 ```
-$ kubectl exec --stdin --tty -n walden deployment/devserver -- /bin/bash
+$ kubectl exec -n walden -it deployment/devserver -- /bin/bash
 ```
 
 3. Create a test MinIO bucket:
@@ -134,6 +138,25 @@ Query 20220208_051155_00006_zfgnn, FINISHED, 1 node
 Splits: 2 total, 2 done (100.00%)
 0.36 [4 rows, 250B] [11 rows/s, 691B/s]
 ```
+
+5. Use Superset to explore Trino
+
+Superset has been configured with a `walden` user and a randomly generated password.
+
+Get the password for logging into Superset:
+```
+$ kubectl get secret -n walden superset-admin -o 'jsonpath={.data.pass}' | base64 -d && echo
+lONGpASSWoRD64HERE
+```
+
+Set up a port-forward to access Superset:
+```
+$ kubectl port-forward -n walden deployment/superset 8088
+```
+
+Go to [http://127.0.0.1:8088/](`http://127.0.0.1:8088/`) and log in with user=`walden` and the password you got earlier.
+
+The Superset instance has already been configured with the Trino database (under `Data` > `Databases`). Go to `SQL Lab` > `SQL Editor` to explore.
 
 ## Conclusions
 

@@ -1,6 +1,11 @@
 coordinator=$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo 'true'; else echo 'false'; fi")
 node-scheduler.include-coordinator=false
 http-server.http.port=8080
+$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo '
+# Password authentication configured via password-authenticator.properties
+# TODO Disabled for now - requires SSL and we don't have that yet.
+#http-server.authentication.type=PASSWORD
+'; else echo ''; fi")
 # This is the max amount of user memory a query can use on a worker.
 # Default: JVM max memory * 0.3
 query.max-memory-per-node=4000MB
@@ -11,6 +16,4 @@ query.max-memory=40GB
 # Default: unrestricted
 query.max-memory-per-task=4000MB
 task.writer-count=2
-discovery.uri=http://trino-coordinator-headless:8080
-$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo '
-'; else echo ''; fi")
+discovery.uri=http://trino:8080
