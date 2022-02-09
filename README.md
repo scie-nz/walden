@@ -70,7 +70,7 @@ Assuming the deployment succeeded, you can ssh into the pod corresponding to
 your devserver like so (make sure to replace `devserver-6c9fcf987c-9vznj`
 with your pod ID from `kubectl get pods -n walden`:
 ```
-$ kubectl exec -n walden -it deployment/devserver -- /bin/bash
+$ kubectl exec -it -n walden deployment/devserver -- /bin/bash
 ```
 
 #### Create a test MinIO bucket
@@ -92,13 +92,13 @@ bucket called "test".
 
 #### Use Trino to create a schema and a table
 
-First, run (from the devserver shell):
+First, run this from the devserver shell:
 ```
 devserver# trino test
 ```
 
-This command starts a session of the trino CLI with the "test" schema. This
-schema does not actually exist in the metastore yet, so we need to create it:
+This command starts a `trino-cli` session with the `test` schema against the `hive` data storage provided by Walden.
+The `test` schema does not actually exist in the Hive metastore yet, so we need to create it:
 ```
 trino:test> CREATE SCHEMA IF NOT EXISTS test WITH (location='s3a://test/');
 CREATE SCHEMA
@@ -189,13 +189,15 @@ This is meant to be a fully functional starting point that can be expanded and c
 Everything here is provided as-is, so your mileage may vary.
 Please report any bugs or issues and we will try to get to them.
 
-## Other Notes/Reference
+## Advanced topics
 
-### Adding external data sources
+### Adding external data sources via Trino
 
-You can also use existing databases with Walden by [connecting them to Trino](https://trino.io/docs/current/connector.html) and then [enabling them in Superset](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers).
+External databases can be added to Walden by [connecting them to Trino](https://trino.io/docs/current/connector.html) as a separate "Catalog". The new Trino Catalog can then be [added to Superset](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers).
 
-1. Edit the `trino-catalog` ConfigMap, adding a `.properties` file entry for [the connector you want](https://trino.io/docs/current/connector.html).
+This strategy allows using both Trino and Superset to interact with the external data. However, some data types (such as GIS geometry columns) may not work well with Trino. In those cases you can instead connect Superset to the external database directly as described in the next section below.
+
+1. Edit the `trino-catalog` ConfigMap, adding a `<NAME>.properties` file entry for [the Trino connector you want](https://trino.io/docs/current/connector.html). The `<NAME>` will be used by Trino as the "Catalog" name.
     ```
     $ kubectl edit configmap -n walden trino-catalog
     ```
@@ -203,8 +205,15 @@ You can also use existing databases with Walden by [connecting them to Trino](ht
     ```
     $ kubectl delete pod -n walden trino-coordinator-xxxx-yyyy trino-worker-xxxx-yyyy
     ```
+3. Verify that the external data source is accessible by logging in to the `devserver` pod as described above. The `<NAME>` is the file name of the `.properties` file you added earlier.
+    ```
+    $ kubectl exec -it -n walden deployment/devserver -- /bin/bash
+    # trino-cli --server trino:8080 --catalog <NAME>
+    trino> SHOW SCHEMAS;
+    trino> DESCRIBE <schemaname>.<tablename>;
+    ```
 
-Now we should be able to add the new Trino schema to Superset:
+Now we should be able to add the new Trino catalog to Superset:
 
 1. Open the Superset UI and log in as described above.
     ```
@@ -232,6 +241,16 @@ Now you can switch to `SQL Lab` > `SQL Editor` and preview the new Database, con
 Check the [Trino](https://trino.io/docs/current/connector.html) and [Superset](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers) docs for any additional information on configuring particular database types.
 
 ![Screenshot of Superset UI showing external PostGIS data via Trino](superset-external.png)
+
+### Adding external data sources via Superset
+
+Instead of connecting an external database via Trino and then adding the Trino schema to Superset, the external database may instead be connected to Superset directly.
+
+This means the data will only be accessible via the Superset UI, and will not be accessible via Trino.
+
+Follow the above steps for logging into the Superset UI and adding a new Database entry, except this time you should pick the type of database that you are adding, instead of Trino. The steps are otherwise similar. If your datatype isn't listed, you may need to build a custom `walden-superset` Docker image that installs the required python module(s).
+
+Check the [Superset docs](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers) for any additional information on configuring particular database types.
 
 ### Building images using Kaniko
 
