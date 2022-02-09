@@ -209,9 +209,20 @@ Walden can be deployed with custom images from your registry/organization.
 1. Assign registry/org prefix (default `docker.io/scienz`): `export WALDEN_ORG=myregistry.example/myorg`
 2. (Optional) Assign tag suffixes (default current `YYYY.mm.dd`):
     - Shared tag across images: `export WALDEN_TAG=1234`
-    - Individual image overrides: `export WALDEN_DEVSERVER_TAG=1234 WALDEN_METASTORE_TAG=2345 WALDEN_TRINO_TAG=3456`
+    - Individual image overrides: `export WALDEN_DEVSERVER_TAG=1234 WALDEN_METASTORE_TAG=2345 WALDEN_SUPERSET_TAG=3456 WALDEN_TRINO_TAG=4567`
 2. Build and push images: Run `docker/*/build.sh` and `docker/*/push.sh`
 3. Deploy environment using the images: Run `kube/deploy.sh`
 
+### Deploying more MinIO nodes
+
+MinIO must be deployed with at least four nodes, which is the default number used by Walden.
+If you'd like to deploy more MinIO nodes, specify a custom `MINIO_REPLICAS` value when running `deploy.sh`.
+
+### Deploying MinIO on alternate architectures
+
+The MinIO images are multi-arch and so can be configured to run on nodes with non-`amd64` architectures.
+In our case, we have a mixed-architecture cluster where several `arm64` Raspberry Pis provide local storage, making them a convenient place for running the MinIO pods.
+To deploy with MinIO nodes on a different architecture, deploy with `MINIO_ARCH=arm64`.
+Note that we do not support custom architectures for the `walden-*` images themselves, as the underlying software doesn't deal with it well.
 
 
