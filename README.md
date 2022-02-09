@@ -165,7 +165,9 @@ Two Trino databases should have been automatically added to Superset by Walden:
 - `walden-trino-system` has various Trino System statistics like node connectivity that may also be interesting to explore.
 In addition to these autoconfigured, you should be able to add other external databases to Superset as well via `Data` > `Databases` in the top menu.
 
-Go to `SQL Lab` > `SQL Editor` to explore, selecting the `walden-trino` database, then the `test` schema that we created earlier. The values we added to this schema earlier should also be visible via Superset.
+We can start exploring by going to `SQL Lab` > `SQL Editor` in the top menu.
+In the SQL Editor view, select the `walden-trino` database, then the `test` schema that we created earlier.
+The values we added to this schema earlier should also be visible via Superset.
 
 ![Screenshot of Superset UI showing test data](superset.png)
 
