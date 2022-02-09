@@ -13,7 +13,8 @@ There are a few things you need before you create your Walden deployment:
 
 ## Running Walden
 
-Deploy Walden:
+### Deploy Walden
+
 ```
 git clone https://github.com/scie-nz/walden
 cd walden/kube
@@ -63,7 +64,7 @@ most of the time. If you need to do more debugging because something is failing
 but are new to Kubernetes, about now would be a good time to go through
 a [tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/).
 
-2. Shell into your devserver:
+### Use devserver to access Trino CLI
 
 Assuming the deployment succeeded, you can ssh into the pod corresponding to
 your devserver like so (make sure to replace `devserver-6c9fcf987c-9vznj`
@@ -72,7 +73,7 @@ with your pod ID from `kubectl get pods -n walden`:
 $ kubectl exec -n walden -it deployment/devserver -- /bin/bash
 ```
 
-3. Create a test MinIO bucket:
+#### Create a test MinIO bucket
 
 Now that you are logged in to the devserver, you are ready to interact with
 your glorious data pond! To do so you first need to create a MinIO bucket,
@@ -89,7 +90,7 @@ Note -- `walden-minio` is an alias to the MinIO deployment created
 automatically when we start the devserver. We have created a
 bucket called "test".
 
-4. Use Trino to create a schema and a table:
+#### Use Trino to create a schema and a table
 
 First, run (from the devserver shell):
 ```
@@ -139,7 +140,10 @@ Splits: 2 total, 2 done (100.00%)
 0.36 [4 rows, 250B] [11 rows/s, 691B/s]
 ```
 
-5. Use Superset to explore Trino
+### Use Superset UI to explore Trino
+
+Superset provides a convienient UI for exploring the data that you've stored in Trino.
+Walden includes an instance of Superset that's preconfigured to connect to Trino.
 
 Superset has been configured with a `walden` user and a randomly generated password.
 
@@ -156,9 +160,12 @@ $ kubectl port-forward -n walden deployment/superset 8088
 
 Go to [http://127.0.0.1:8088/](`http://127.0.0.1:8088/`) and log in with user=`walden` and the password you got earlier.
 
-The Superset instance has already been configured with the Trino database (under `Data` > `Databases`). Go to `SQL Lab` > `SQL Editor` to explore.
+Two Trino databases should have been automatically added to Superset by Walden:
+- `walden-trino` has Trino data, including what we added to a `test` schema in earlier steps. The data itself is being stored to Minio in Hive columnar table format, with the Metastore acting as the index.
+- `walden-trino-system` has various Trino System statistics like node connectivity that may also be interesting to explore.
+In addition to these autoconfigured, you should be able to add other external databases to Superset as well via `Data` > `Databases` in the top menu.
 
-Two Trino databases should have been automatically added to Superset by Walden. The first contains the Trino data itself, including what we added earlier to a `test` schema. The second has various Trino System statistics like node connectivity that might be interesting to explore.
+Go to `SQL Lab` > `SQL Editor` to explore, selecting the `walden-trino` database, then the `test` schema that we created earlier. The values we added to this schema earlier should also be visible via Superset.
 
 ## Conclusions
 
