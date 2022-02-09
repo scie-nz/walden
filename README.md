@@ -231,7 +231,7 @@ Now you can switch to `SQL Lab` > `SQL Editor` and preview the new Database, con
 
 Check the [Trino](https://trino.io/docs/current/connector.html) and [Superset](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers) docs for any additional information on configuring particular database types.
 
-![Screenshot of Superset UI showing external PostGIS data via Trino](superset.png)
+![Screenshot of Superset UI showing external PostGIS data via Trino](superset-external.png)
 
 ### Building images using Kaniko
 
