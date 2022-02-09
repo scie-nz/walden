@@ -4,8 +4,8 @@
     <value>org.apache.hadoop.fs.s3native.NativeS3FileSystem</value>
   </property>
   <property>
-      <name>fs.s3a.impl</name>
-      <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+    <name>fs.s3a.impl</name>
+    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
   </property>
   <property>
     <name>fs.s3.awsAccessKeyId</name>
