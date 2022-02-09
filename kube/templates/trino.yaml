@@ -2,6 +2,32 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: trino-catalog
+  namespace: walden
+data:
+  # Configure Trino to write Hive data via MinIO
+  core-site.xml: |
+{{ .Files.Get "configs/trino_core-site.xml" | indent 4 }}
+  hive.properties: |
+{{ .Files.Get "configs/trino_hive.properties" | indent 4 }}
+
+  # Enable TPCH benchmark schemas
+  # See: https://trino.io/docs/current/connector/tpch.html
+  tpch.properties: |
+    connector.name=tpch
+
+  # !!! You can connect Trino to your own data sources here!
+  # !!! Add your own custom .properties files to this ConfigMap.
+  # !!! See also: https://trino.io/docs/current/connector.html
+  #example_postgres.properties: |
+  #  connector.name=postgresql
+  #  connection-url=jdbc:postgresql://example.com:5432/dbname
+  #  connection-user=postgresUserHere
+  #  connection-password=postgresPasswordHere
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: trino-config
   namespace: walden
 data:
@@ -17,19 +43,6 @@ data:
 {{ .Files.Get "configs/trino_node.properties.template" | indent 4 }}
   password-authenticator.properties: |
 {{ .Files.Get "configs/trino_password-authenticator.properties" | indent 4 }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: trino-catalog
-  namespace: walden
-data:
-  core-site.xml: |
-{{ .Files.Get "configs/trino_core-site.xml" | indent 4 }}
-  hive.properties: |
-{{ .Files.Get "configs/trino_hive.properties" | indent 4 }}
-  tpch.properties: |
-    connector.name=tpch
 ---
 apiVersion: v1
 kind: Service
