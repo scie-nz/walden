@@ -45,7 +45,7 @@ kubectl delete secret sh.helm.release.v1.${RELEASE_NAME}.v1 --ignore-not-found
 SETTINGS="walden_docker_org=${WALDEN_ORG:-docker.io/scienz},\
 walden_devserver_tag=${WALDEN_DEVSERVER_TAG:-${WALDEN_TAG:-2022.02.09}},\
 walden_metastore_tag=${WALDEN_METASTORE_TAG:-${WALDEN_TAG:-2022.02.08}},\
-walden_superset_tag=${WALDEN_SUPERSET_TAG:-${WALDEN_TAG:-2022.02.09}},\
+walden_superset_tag=${WALDEN_SUPERSET_TAG:-${WALDEN_TAG:-2022.02.10}},\
 walden_trino_tag=${WALDEN_TRINO_TAG:-${WALDEN_TAG:-2022.02.09}},\
 minio_replicas=${MINIO_REPLICAS:-4},\
 minio_arch=${MINIO_ARCH:-amd64}"
