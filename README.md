@@ -140,7 +140,7 @@ Splits: 2 total, 2 done (100.00%)
 0.36 [4 rows, 250B] [11 rows/s, 691B/s]
 ```
 
-### Use Superset UI to explore Trino
+### Explore data with Superset
 
 Superset provides a convienient UI for exploring the data that you've stored in Trino.
 Walden includes an instance of Superset that's preconfigured to connect to Trino.
@@ -153,7 +153,7 @@ $ kubectl get secret -n walden superset-admin -o 'jsonpath={.data.pass}' | base6
 lONGpASSWoRD64HERE
 ```
 
-Set up a port-forward to access Superset:
+Set up a port-forward to access Superset on port `8088`:
 ```
 $ kubectl port-forward -n walden deployment/superset 8088
 ```
@@ -166,6 +166,19 @@ Two Trino databases should have been automatically added to Superset by Walden:
 In addition to these autoconfigured, you should be able to add other external databases to Superset as well via `Data` > `Databases` in the top menu.
 
 Go to `SQL Lab` > `SQL Editor` to explore, selecting the `walden-trino` database, then the `test` schema that we created earlier. The values we added to this schema earlier should also be visible via Superset.
+
+![Screenshot of Superset UI showing test data](superset.png)
+
+### View the Trino Dashboard
+
+Trino also provides a dashboard UI showing basic activity. Set up a port-forward to access the dashboard on port `8080`:
+```
+$ kubectl port-forward -n walden deployment/trino-coordinator 8080
+```
+
+Go to [http://127.0.0.1:8080](`http://127.0.0.1:8080`) and log in with any value for the username (it doesn't matter).
+
+![Screenshot of Trino Dashboard](trino.png)
 
 ## Conclusions
 
