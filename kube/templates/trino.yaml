@@ -2,15 +2,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: trino
+  name: trino-config
   namespace: walden
 data:
   config.properties.template: |
 {{ .Files.Get "configs/trino_config.properties.template" | indent 4 }}
-  core-site.xml: |
-{{ .Files.Get "configs/trino_core-site.xml" | indent 4 }}
-  hive.properties: |
-{{ .Files.Get "configs/trino_hive.properties" | indent 4 }}
+  postgres.properties: |
+{{ .Files.Get "configs/trino_postgres.properties" | indent 4 }}
   jvm.config: |
 {{ .Files.Get "configs/trino_jvm.config" | indent 4 }}
   log.properties: |
@@ -19,6 +17,19 @@ data:
 {{ .Files.Get "configs/trino_node.properties.template" | indent 4 }}
   password-authenticator.properties: |
 {{ .Files.Get "configs/trino_password-authenticator.properties" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-catalog
+  namespace: walden
+data:
+  core-site.xml: |
+{{ .Files.Get "configs/trino_core-site.xml" | indent 4 }}
+  hive.properties: |
+{{ .Files.Get "configs/trino_hive.properties" | indent 4 }}
+  tpch.properties: |
+    connector.name=tpch
 ---
 apiVersion: v1
 kind: Service
@@ -56,23 +67,21 @@ spec:
         # We only build an amd64 trino image
         kubernetes.io/arch: amd64
       initContainers:
-      - name: copy-ro-configs
+      - name: copy-configs
         # Use walden-trino image, rather than busybox, to have access to htpasswd command
         image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
         command:
         - /bin/sh
         - -c
-        # TODO We currently generate a credentials file but it's disabled until we can configure SSL for Trino.
+        # TODO We currently generate a credentials file as an example.
+        #      Trino requires that SSL be enabled before credentials will be used.
         - |
-          cp -v /conf/config.properties.template /conf/jvm.config /conf/node.properties.template /conf/password-authenticator.properties /conf-out/ &&
-          mkdir -p /conf-out/catalog &&
-          cp -v /conf/hive.properties /conf/core-site.xml /conf-out/catalog &&
-          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/hive.properties &&
-          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/hive.properties &&
-          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/core-site.xml &&
-          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/core-site.xml &&
-          echo 'connector.name=tpch' > /conf-out/catalog/tpch.properties &&
-          htpasswd -c -b -B -C 10 /conf-out/password.db "$TRINO_USER" "$TRINO_PASSWORD"
+          cp -v /conf/* /etc-out/ &&
+          mkdir -p /etc-out/catalog &&
+          cp -v /catalog/* /etc-out/catalog &&
+          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /etc-out/catalog/* &&
+          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /etc-out/catalog/* &&
+          htpasswd -c -b -B -C 10 /etc-out/password.db "$TRINO_USER" "$TRINO_PASSWORD"
         env:
         - name: MINIO_ACCESS_KEY_ID
           valueFrom:
@@ -95,10 +104,12 @@ spec:
               name: trino-admin
               key: pass
         volumeMounts:
-        - name: configmap
+        - name: config
           mountPath: /conf
-        - name: pre-install
-          mountPath: /conf-out
+        - name: catalog
+          mountPath: /catalog
+        - name: etc
+          mountPath: /etc-out
       containers:
       - name: trino-coordinator
         image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
@@ -111,13 +122,16 @@ spec:
         - name: http
           containerPort: 8080
         volumeMounts:
-        - name: pre-install
+        - name: etc
           mountPath: /trino-server/etc
       volumes:
-      - name: configmap
+      - name: config
         configMap:
-          name: trino
-      - name: pre-install
+          name: trino-config
+      - name: catalog
+        configMap:
+          name: trino-catalog
+      - name: etc
         emptyDir: {}
 ---
 apiVersion: apps/v1
@@ -141,20 +155,17 @@ spec:
         kubernetes.io/arch: amd64
       terminationGracePeriodSeconds: 10
       initContainers:
-      - name: copy-ro-configs
+      - name: copy-configs
         image: busybox
         command:
         - sh
         - -c
         - |
-          cp -v /conf/config.properties.template /conf/jvm.config /conf/node.properties.template /conf-out/ &&
-          mkdir -p /conf-out/catalog &&
-          cp -v /conf/hive.properties /conf/core-site.xml /conf-out/catalog &&
-          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/hive.properties &&
-          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/hive.properties &&
-          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /conf-out/catalog/core-site.xml &&
-          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /conf-out/catalog/core-site.xml &&
-          echo 'connector.name=tpch' > /conf-out/catalog/tpch.properties
+          cp -v /conf/* /etc-out/ &&
+          mkdir -p /etc-out/catalog &&
+          cp -v /catalog/* /etc-out/catalog &&
+          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /etc-out/catalog/* &&
+          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /etc-out/catalog/*
         env:
         - name: MINIO_ACCESS_KEY_ID
           valueFrom:
@@ -167,10 +178,12 @@ spec:
               name: minio-root
               key: pass
         volumeMounts:
-        - name: properties
+        - name: config
           mountPath: /conf
-        - name: pre-install
-          mountPath: /conf-out
+        - name: catalog
+          mountPath: /catalog
+        - name: etc
+          mountPath: /etc-out
       containers:
       - name: trino-worker
         image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
@@ -183,11 +196,14 @@ spec:
         - name: http
           containerPort: 8080
         volumeMounts:
-        - name: pre-install
+        - name: etc
           mountPath: /trino-server/etc
       volumes:
-      - name: properties
+      - name: config
         configMap:
-          name: trino
-      - name: pre-install
+          name: trino-config
+      - name: catalog
+        configMap:
+          name: trino-catalog
+      - name: etc
         emptyDir: {}
