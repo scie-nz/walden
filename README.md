@@ -246,7 +246,7 @@ Check the [Trino](https://trino.io/docs/current/connector.html) and [Superset](h
 
 Instead of connecting an external database via Trino and then adding the Trino schema to Superset, the external database may instead be connected to Superset directly.
 
-This means the data will only be accessible via the Superset UI, and will not be accessible via Trino.
+This means the data will only be accessible via the Superset UI, and will not be accessible via Trino. But this may be preferable in cases like [Geometry columns](https://github.com/trinodb/trino/issues/5580) where the data may be hidden due to not being supported by Trino. Connecting these sources directly to Superset avoids this problem.
 
 Follow the above steps for logging into the Superset UI and adding a new Database entry, except this time you should pick the type of database that you are adding, instead of Trino. The steps are otherwise similar. If your datatype isn't listed, you may need to build a custom `walden-superset` Docker image that installs the required python module(s).
 
