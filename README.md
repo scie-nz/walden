@@ -158,6 +158,8 @@ Go to [http://127.0.0.1:8088/](`http://127.0.0.1:8088/`) and log in with user=`w
 
 The Superset instance has already been configured with the Trino database (under `Data` > `Databases`). Go to `SQL Lab` > `SQL Editor` to explore.
 
+Two Trino databases should have been automatically added to Superset by Walden. The first contains the Trino data itself, including what we added earlier to a `test` schema. The second has various Trino System statistics like node connectivity that might be interesting to explore.
+
 ## Conclusions
 
 That's it, this is an easy way to get a small data lake working.
