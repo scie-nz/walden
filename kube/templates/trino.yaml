@@ -52,9 +52,13 @@ metadata:
   labels:
     app: trino-coordinator
 spec:
+{{- if .Values.trino.external_ip }}
+  externalIPs:
+  - {{ .Values.trino.external_ip }}
+{{- end }}
   ports:
   - name: http
-    port: 8080
+    port: 80
     targetPort: http
   selector:
     app: trino-coordinator
@@ -82,7 +86,7 @@ spec:
       initContainers:
       - name: copy-configs
         # Use walden-trino image, rather than busybox, to have access to htpasswd command
-        image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
+        image: {{ .Values.image.trino }}
         command:
         - /bin/sh
         - -c
@@ -125,12 +129,15 @@ spec:
           mountPath: /etc-out
       containers:
       - name: trino-coordinator
-        image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
+        image: {{ .Values.image.trino }}
         env:
         - name: HIVE_METASTORE_HOST
           value: metastore
         - name: HIVE_METASTORE_PORT
           value: "9083"
+        resources:
+          limits:
+            memory: {{ .Values.trino.mem_limit_coordinator }}
         ports:
         - name: http
           containerPort: 8080
@@ -155,7 +162,7 @@ metadata:
   name: trino-worker
   namespace: walden
 spec:
-  replicas: 1
+  replicas: {{ .Values.trino.worker_replicas }}
   selector:
     matchLabels:
       app: trino-worker
@@ -169,7 +176,7 @@ spec:
       terminationGracePeriodSeconds: 10
       initContainers:
       - name: copy-configs
-        image: busybox
+        image: {{ .Values.image.busybox }}
         command:
         - sh
         - -c
@@ -199,12 +206,15 @@ spec:
           mountPath: /etc-out
       containers:
       - name: trino-worker
-        image: {{ .Values.walden_docker_org }}/walden-trino:{{ .Values.walden_trino_tag }}
+        image: {{ .Values.image.trino }}
         env:
         - name: HIVE_METASTORE_HOST
           value: metastore
         - name: HIVE_METASTORE_PORT
           value: "9083"
+        resources:
+          limits:
+            memory: {{ .Values.trino.mem_limit_worker }}
         ports:
         - name: http
           containerPort: 8080

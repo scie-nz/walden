@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: postgres:14.1
+        image: {{ .Values.image.postgres }}
         command:
         - bash
         - -c

@@ -18,7 +18,9 @@ There are a few things you need before you create your Walden deployment:
 ```
 git clone https://github.com/scie-nz/walden
 cd walden/kube
-./deploy.sh # requires Helm and kubectl access to cluster
+
+# requires Helm and kubectl access to cluster:
+./deploy.sh values-default.yaml
 ```
 
 You should see a whole bunch of text resulting from the deploy command. As
@@ -261,27 +263,26 @@ kubectl create secret -n walden docker-registry regcred --docker-server=https://
 kubectl apply -f kube-build/templates/kaniko-devserver.yaml
 ```
 
-After building/pushing new release images, update the default `WALDEN_VERSION` in `kube/deploy.sh`.
+After building/pushing new release images, update the tags in `values-default.yaml`.
 
 ### Deploying with custom images
 
 Walden can be deployed with custom images from your registry/organization.
 
-1. Assign registry/org prefix (default `docker.io/scienz`): `export WALDEN_ORG=myregistry.example/myorg`
-2. (Optional) Assign tag suffixes (default current `YYYY.mm.dd`):
-    - Shared tag across images: `export WALDEN_TAG=1234`
-    - Individual image overrides: `export WALDEN_DEVSERVER_TAG=1234 WALDEN_METASTORE_TAG=2345 WALDEN_SUPERSET_TAG=3456 WALDEN_TRINO_TAG=4567`
+1. Copy `values-default.yaml`, then edit the settings under the `image` section:
+    - A custom registry/organization can be assigned using the `image.docker_org` setting
+    - Custom tags for individual images can be assigned using `image.*_tag` settings
 2. Build and push images: Run `docker/*/build.sh` and `docker/*/push.sh`
-3. Deploy environment using the images: Run `kube/deploy.sh`
+3. Deploy using custom images: Run `kube/deploy.sh values-mycopy.yaml`
 
 ### Deploying more MinIO nodes
 
 MinIO must be deployed with at least four nodes, which is the default number used by Walden.
-If you'd like to deploy more MinIO nodes, specify a custom `MINIO_REPLICAS` value when running `deploy.sh`.
+If you'd like to deploy more MinIO nodes, edit the `minio.replicas` setting in the `values.yaml` that you pass to `deploy.sh`.
 
 ### Deploying MinIO on alternate architectures
 
 The MinIO images are multi-arch and so can be configured to run on nodes with non-`amd64` architectures.
 In our case, we have a mixed-architecture cluster where several `arm64` Raspberry Pis provide local storage, making them a convenient place for running the MinIO pods.
-To deploy with MinIO nodes on a different architecture, deploy with `MINIO_ARCH=arm64`.
+To deploy with MinIO nodes on a different architecture, edit the `minio.arch` setting in the `values.yaml` that you pass to `deploy.sh`.
 Note that we do not support custom architectures for the `walden-*` images themselves, as the underlying software doesn't deal with it well.

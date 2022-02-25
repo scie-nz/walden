@@ -21,7 +21,10 @@ metadata:
   labels:
     app: superset
 spec:
-  type: ClusterIP
+{{- if .Values.superset.external_ip }}
+  externalIPs:
+  - {{ .Values.superset.external_ip }}
+{{- end }}
   ports:
   - port: 80
     targetPort: http
@@ -38,7 +41,7 @@ metadata:
   labels:
     app: superset-worker
 spec:
-  replicas: 1
+  replicas: {{ .Values.superset.worker_replicas }}
   selector:
     matchLabels:
       app: superset-worker
@@ -52,7 +55,7 @@ spec:
         kubernetes.io/arch: amd64
       initContainers:
       - name: wait-for-postgres
-        image: busybox
+        image: {{ .Values.image.busybox }}
         command:
         - /bin/sh
         - -c
@@ -64,7 +67,7 @@ spec:
           value: "5432"
       containers:
       - name: superset
-        image: {{ .Values.walden_docker_org }}/walden-superset:{{ .Values.walden_superset_tag }}
+        image: {{ .Values.image.superset }}
         command:
         - celery
         - --app=superset.tasks.celery_app:app
@@ -97,6 +100,9 @@ spec:
             secretKeyRef:
               name: superset-postgres
               key: pass
+        resources:
+          limits:
+            memory: {{ .Values.superset.mem_limit_worker }}
         volumeMounts:
         - name: config
           mountPath: "/app/pythonpath"
@@ -129,7 +135,7 @@ spec:
       initContainers:
 
       - name: wait-for-postgres
-        image: busybox
+        image: {{ .Values.image.busybox }}
         command:
         - /bin/sh
         - -c
@@ -143,7 +149,7 @@ spec:
       containers:
 
       - name: superset
-        image: {{ .Values.walden_docker_org }}/walden-superset:{{ .Values.walden_superset_tag }}
+        image: {{ .Values.image.superset }}
         # Newer images should have /usr/bin/run-server.sh, but as of 1.4.0 it doesn't exist yet.
         # In the meantime (or indefinitely?) we can just run the underlying gunicorn command directly.
         command:
@@ -188,6 +194,9 @@ spec:
             secretKeyRef:
               name: superset-postgres
               key: pass
+        resources:
+          limits:
+            memory: {{ .Values.superset.mem_limit_server }}
         volumeMounts:
         - name: config
           mountPath: "/app/pythonpath"
@@ -198,7 +207,7 @@ spec:
           protocol: TCP
 
       - name: init
-        image: {{ .Values.walden_docker_org }}/walden-superset:{{ .Values.walden_superset_tag }}
+        image: {{ .Values.image.superset }}
         command:
         - /bin/sh
         - -c

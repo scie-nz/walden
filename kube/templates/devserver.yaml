@@ -18,7 +18,7 @@ spec:
         # We only build an amd64 devserver image
         kubernetes.io/arch: amd64
       containers:
-      - image: {{ .Values.walden_docker_org }}/walden-devserver:{{ .Values.walden_devserver_tag }}
+      - image: {{ .Values.image.devserver }}
         name: devserver
         volumeMounts:
         - name: devserver-persistent-storage

@@ -2,6 +2,17 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+if [ -z "$1" ]; then
+    echo "Syntax: $0 <values.yaml>"
+    echo "If you just wish to use the defaults, then run: $0 values-default.yaml"
+    exit 1
+fi
+VALUES_FILE="$1"
+if [ ! -f "$VALUES_FILE" ]; then
+    echo "File not found (or not a file): $VALUES_FILE"
+    exit 1
+fi
+
 # strict mode
 set -euo pipefail
 IFS=$'\n\t'
@@ -36,18 +47,6 @@ RELEASE_NAME=walden
 # might be fixed with https://github.com/helm/helm/pull/7653/
 kubectl delete secret sh.helm.release.v1.${RELEASE_NAME}.v1 --ignore-not-found
 
-# Deployment options:
-# - WALDEN_ORG: Allow overriding the registry/organization for pulling all walden images.
-# - WALDEN_TAG/WALDEN_*_TAG: Configure tags for all walden images, or for individual images.
-# - MINIO_REPLICAS: Number of replicas for MinIO, the default/minimum is 4.
-# - MINIO_ARCH: In mixed-arch clusters, allows running minio on ARM nodes.
 # NOTE: Ideally we'd do 'helm template | kubectl apply' but this breaks lookup of randomly generated secrets.
-SETTINGS="walden_docker_org=${WALDEN_ORG:-docker.io/scienz},\
-walden_devserver_tag=${WALDEN_DEVSERVER_TAG:-${WALDEN_TAG:-2022.02.09}},\
-walden_metastore_tag=${WALDEN_METASTORE_TAG:-${WALDEN_TAG:-2022.02.08}},\
-walden_superset_tag=${WALDEN_SUPERSET_TAG:-${WALDEN_TAG:-2022.02.10}},\
-walden_trino_tag=${WALDEN_TRINO_TAG:-${WALDEN_TAG:-2022.02.09}},\
-minio_replicas=${MINIO_REPLICAS:-4},\
-minio_arch=${MINIO_ARCH:-amd64}"
-echo "Using settings: $SETTINGS"
-helm upgrade --install --debug --set $SETTINGS $RELEASE_NAME $SCRIPT_DIR
+echo "Using values file: $VALUES_FILE"
+helm upgrade --install --debug --values $VALUES_FILE $RELEASE_NAME $SCRIPT_DIR

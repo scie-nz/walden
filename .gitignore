@@ -1,3 +1,7 @@
+# Ignore any files named "values*.yaml", except for "kube/values-default.yaml"
+**/values*.yaml
+!kube/values-default.yaml
+
 *.iml
 *.iws
 .idea/

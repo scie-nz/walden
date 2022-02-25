@@ -37,7 +37,7 @@ spec:
         kubernetes.io/arch: arm64
       containers:
       - name: server
-        image: redis:6.2.6-buster
+        image: {{ .Values.image.redis }}
         # Args are overrides of these settings:
         # https://raw.githubusercontent.com/antirez/redis/6.0/redis.conf
         command:

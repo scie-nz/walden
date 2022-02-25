@@ -1,0 +1,56 @@
+# These are the default settings for starting a new Walden instance.
+# To customize these options:
+# 1. Make a copy of this file
+# 2. Edit the copy
+# 3. Deploy with "./deploy.sh <myvalues.yaml>"
+
+image:
+  # Utility image for initContainers: config templating, waiting for dependencies to start.
+  busybox: docker.io/library/busybox:latest
+  minio: docker.io/minio/minio:RELEASE.2022-02-05T04-40-59Z
+  # Changes to the Postgres major version require manually upgrading the on-disk data.
+  postgres: docker.io/library/postgres:14.1
+  redis: docker.io/library/redis:6.2.6-buster
+
+  # The latest release versions for Walden images.
+  # See walden/docker/* for image definitions.
+  devserver: docker.io/scienz/walden-devserver:2022.02.09
+  metastore: docker.io/scienz/walden-metastore:2022.02.08
+  superset: docker.io/scienz/walden-superset:2022.02.10
+  trino: docker.io/scienz/walden-trino:2022.02.09
+
+minio:
+  # The number of Minio replicas, must be at least four
+  replicas: 4
+  # The CPU architecture for Minio nodes, each must be running the same arch
+  arch: amd64
+  # The memory limit for each Minio pod.
+  # Minio recommends 8GB for pods with up to 1TB storage/pod, or 16GB for up to 10TB storage/pod.
+  # We start with very low values, increase to fit your system and workloads.
+  mem_limit: 512Mi
+
+superset:
+  # The username/password for logging in to Superset
+  # If either is empty, a random value is generated and stored in the "superset-admin" secret
+  # This only takes effect during initial install. If you want to change it later,
+  # edit the "superset-admin" Secret directly and restart the Superset pod.
+  username: "walden"
+  password: ""
+  # Number of celery worker replicas.
+  worker_replicas: 1
+  # The memory limits for each of the Superset pods
+  # We start with very low values, increase to fit your system and workloads.
+  mem_limit_server: 1Gi
+  mem_limit_worker: 1Gi
+  # An external IP for the Superset service
+  external_ip: ""
+
+trino:
+  # Number of worker replicas. By default the workers avoid colocating with the coordinator.
+  worker_replicas: 1
+  # The memory limits for each of the Trino pods
+  # We start with very low values, increase to fit your system and workloads.
+  mem_limit_coordinator: 1Gi
+  mem_limit_worker: 1Gi
+  # An external IP for the Trino service
+  external_ip: ""

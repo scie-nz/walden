@@ -47,7 +47,7 @@ spec:
         kubernetes.io/arch: amd64
       initContainers:
       - name: wait-for-postgres
-        image: busybox
+        image: {{ .Values.image.busybox }}
         command:
         - /bin/sh
         - -c
@@ -59,7 +59,7 @@ spec:
           value: "5432"
       containers:
       - name: metastore
-        image: {{ .Values.walden_docker_org }}/walden-metastore:{{ .Values.walden_metastore_tag }}
+        image: {{ .Values.image.metastore }}
         env:
         - name: METASTORE_PORT
           value: "9083"

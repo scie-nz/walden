@@ -39,7 +39,7 @@ metadata:
     app: minio
 spec:
   serviceName: minio-headless
-  replicas: {{ .Values.minio_replicas }}
+  replicas: {{ .Values.minio.replicas }}
   selector:
     matchLabels:
       app: minio
@@ -51,7 +51,7 @@ spec:
       # Minio is a good candidate for running on ARM when available.
       # However, Minio complains if we have mixed architectures, so lock it to only run on a single arch.
       nodeSelector:
-        kubernetes.io/arch: {{ .Values.minio_arch }}
+        kubernetes.io/arch: {{ .Values.minio.arch }}
       # Ensure that each minio pod is placed on a separate node from other minio pods.
       # If you do not have at least four nodes, you can comment this out.
       affinity:
@@ -71,7 +71,7 @@ spec:
         runAsGroup: 65534
       containers:
       - name: minio
-        image: minio/minio:RELEASE.2022-02-05T04-40-59Z
+        image: {{ .Values.image.minio }}
         env:
         - name: MINIO_ROOT_USER
           valueFrom:
@@ -89,13 +89,16 @@ spec:
               fieldPath: metadata.namespace
         - name: MINIO_MAX_HOSTNUM
           # For N pods, we want '0...N-1' to match pod hostnames, see below.
-          value: "{{ sub .Values.minio_replicas 1 }}"
+          value: "{{ sub .Values.minio.replicas 1 }}"
         command:
         - /bin/bash
         - -c
         # Must provide each pod with the total replica count.
         # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
         - 'minio server http://minio-{0...${MINIO_MAX_HOSTNUM}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
+        resources:
+          limits:
+            memory: {{ .Values.minio.mem_limit }}
         ports:
         - name: s3
           containerPort: 9000
