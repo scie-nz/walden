@@ -199,18 +199,15 @@ External databases can be added to Walden by [connecting them to Trino](https://
 
 This strategy allows using both Trino and Superset to interact with the external data. However, some data types (such as GIS geometry columns) may not work well with Trino. In those cases you can instead connect Superset to the external database directly as described in the next section below.
 
-1. Edit the `trino-catalog` ConfigMap, adding a `<NAME>.properties` file entry for [the Trino connector you want](https://trino.io/docs/current/connector.html). The `<NAME>` will be used by Trino as the "Catalog" name.
-    ```
-    $ kubectl edit configmap -n walden trino-catalog
-    ```
-2. Restart the `trino-*` pods for the change to take effect.
+1. Uncomment and edit the `catalog_custom` setting in your `values.yaml`, then apply the changes with `deploy.sh`. This block should have the content of a `.properties` file for [the Trino connector you want](https://trino.io/docs/current/connector.html). The resulting "Catalog" name will be `custom`.
+2. After running `deploy.sh`, restart the `trino-*` pods manually for the change to take effect.
     ```
     $ kubectl delete pod -n walden trino-coordinator-xxxx-yyyy trino-worker-xxxx-yyyy
     ```
-3. Verify that the external data source is accessible by logging in to the `devserver` pod as described above. The `<NAME>` is the file name of the `.properties` file you added earlier.
+3. Verify that the external data source is accessible by logging in to the `devserver` pod as described above and checking for a data source named `custom`.
     ```
     $ kubectl exec -it -n walden deployment/devserver -- /bin/bash
-    # trino-cli --server trino --catalog <NAME>
+    # trino-cli --server trino --catalog custom
     trino> SHOW SCHEMAS;
     trino> DESCRIBE <schemaname>.<tablename>;
     ```
@@ -225,7 +222,7 @@ Now we should be able to add the new Trino catalog to Superset:
     ```
 2. Go to `Data` > `Databases` via the top menu and click the `+ Database` on the upper right to add a new Database.
 3. Select the `Trino` database type from the pull down menu.
-4. Set the `SQLAlchemy URI` to `trino://trino/<NAME>`, where `<NAME>` matches the FILE NAME of the `.properties` file added earlier. For example, if the file was named `mydb.properties`, then you should enter `trino://trino/mydb` here.
+4. Set the `SQLAlchemy URI` to `trino://trino/custom`.
 5. (OPTIONAL) Switch to the `Advanced` tab and enable the following:
     - SQL Lab:
         - `Expose database in SQL Lab`, followed by...

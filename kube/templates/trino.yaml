@@ -16,14 +16,11 @@ data:
   tpch.properties: |
     connector.name=tpch
 
-  # !!! You can connect Trino to your own data sources here!
-  # !!! Add your own custom .properties files to this ConfigMap.
-  # !!! See also: https://trino.io/docs/current/connector.html
-  #example_postgres.properties: |
-  #  connector.name=postgresql
-  #  connection-url=jdbc:postgresql://example.com:5432/dbname
-  #  connection-user=postgresUserHere
-  #  connection-password=postgresPasswordHere
+{{- if .Values.trino.catalog_custom }}
+  # Custom user catalog entry
+  custom.properties: |
+{{ .Values.trino.catalog_custom | indent 4 }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap

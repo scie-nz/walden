@@ -14,7 +14,7 @@ image:
 
   # The latest release versions for Walden images.
   # See walden/docker/* for image definitions.
-  devserver: docker.io/scienz/walden-devserver:2022.02.09
+  devserver: docker.io/scienz/walden-devserver:2022.02.25
   metastore: docker.io/scienz/walden-metastore:2022.02.08
   superset: docker.io/scienz/walden-superset:2022.02.10
   # TODO bump image when maven works:
@@ -73,3 +73,11 @@ trino:
     # max-spill-per-node and query-max-spill-per-node (disk space, default: 100GB)
     max_spill_per_node: 25GB
     query_max_spill_per_node: 10GB
+
+  # Custom external data source to include in Trino connectors
+  # See also: https://trino.io/docs/current/connector.html
+  #catalog_custom: |
+  #  connector.name=postgresql
+  #  connection-url=jdbc:postgresql://example.com:5432/dbname
+  #  connection-user=postgresUserHere
+  #  connection-password=postgresPasswordHere
