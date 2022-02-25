@@ -1,5 +1,9 @@
 #!/bin/bash
 
-bash -c "echo -e \"$(cat etc/node.properties.template)\" > etc/node.properties"
-bash -c "echo -e \"$(cat etc/config.properties.template)\" > etc/config.properties"
+for infile in $(ls etc/*.template); do
+    outfile=$(echo "$infile" | sed "s/\\.template$//g")
+    echo "Rendering $infile => $outfile"
+    bash -c "echo -e \"$(cat $infile)\" > $outfile"
+done
+
 bin/launcher run -v

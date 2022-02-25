@@ -6,14 +6,32 @@ $(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo '
 # TODO Disabled for now - requires SSL and we don't have that yet.
 #http-server.authentication.type=PASSWORD
 '; else echo ''; fi")
+
 # This is the max amount of user memory a query can use on a worker.
 # Default: JVM max memory * 0.3
-query.max-memory-per-node=4000MB
+query.max-memory-per-node=$(echo $CONFIG_QUERY_MAX_MEMORY_PER_NODE)
 # This is the max amount of user memory a query can use across the entire cluster.
 # Default: 20GB
-query.max-memory=40GB
-# This is the max amount of the memory a task can use on a node in the cluster.
+query.max-memory=$(echo $CONFIG_QUERY_MAX_MEMORY)
+# This is the amount of memory set aside as headroom/buffer in the JVM heap
+# for allocations that are not tracked by Trino.
+memory.heap-headroom-per-node=$(echo $CONFIG_MEMORY_HEAP_HEADROOM_PER_NODE)
+# (EXPERIMENTAL) This is the max amount of the memory a task can use on a node in the cluster.
 # Default: unrestricted
-query.max-memory-per-task=4000MB
+#query.max-memory-per-task=4000MB
+
+# "spill"/swap disk storage for intermediate storage of queries
+spill-enabled=true
+spill-compression-enabled=true
+# Directory where spilled content is written.
+spiller-spill-path=/storage/spill
+# Max spill space to be used by all queries on a single node.
+max-spill-per-node=$(echo $CONFIG_MAX_SPILL_PER_NODE)
+# Max spill space to be used by a single query on a single node.
+query-max-spill-per-node=$(echo $CONFIG_QUERY_MAX_SPILL_PER_NODE)
+
+# The number of concurrent writer threads per worker per query.
+# Default: 1
 task.writer-count=2
-discovery.uri=http://trino:8080
+
+discovery.uri=http://trino

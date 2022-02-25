@@ -210,7 +210,7 @@ This strategy allows using both Trino and Superset to interact with the external
 3. Verify that the external data source is accessible by logging in to the `devserver` pod as described above. The `<NAME>` is the file name of the `.properties` file you added earlier.
     ```
     $ kubectl exec -it -n walden deployment/devserver -- /bin/bash
-    # trino-cli --server trino:8080 --catalog <NAME>
+    # trino-cli --server trino --catalog <NAME>
     trino> SHOW SCHEMAS;
     trino> DESCRIBE <schemaname>.<tablename>;
     ```
@@ -225,7 +225,7 @@ Now we should be able to add the new Trino catalog to Superset:
     ```
 2. Go to `Data` > `Databases` via the top menu and click the `+ Database` on the upper right to add a new Database.
 3. Select the `Trino` database type from the pull down menu.
-4. Set the `SQLAlchemy URI` to `trino://trino:8080/<NAME>`, where `<NAME>` matches the FILE NAME of the `.properties` file added earlier. For example, if the file was named `mydb.properties`, then you should enter `trino://trino:8080/mydb` here.
+4. Set the `SQLAlchemy URI` to `trino://trino/<NAME>`, where `<NAME>` matches the FILE NAME of the `.properties` file added earlier. For example, if the file was named `mydb.properties`, then you should enter `trino://trino/mydb` here.
 5. (OPTIONAL) Switch to the `Advanced` tab and enable the following:
     - SQL Lab:
         - `Expose database in SQL Lab`, followed by...

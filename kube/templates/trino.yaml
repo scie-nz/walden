@@ -35,6 +35,7 @@ data:
 {{ .Files.Get "configs/trino_config.properties.template" | indent 4 }}
   postgres.properties: |
 {{ .Files.Get "configs/trino_postgres.properties" | indent 4 }}
+  # TODO switch filenames to *jvm.config.template:
   jvm.config: |
 {{ .Files.Get "configs/trino_jvm.config" | indent 4 }}
   log.properties: |
@@ -135,6 +136,18 @@ spec:
           value: metastore
         - name: HIVE_METASTORE_PORT
           value: "9083"
+        - name: CONFIG_JVM_HEAP
+          value: "{{ .Values.trino.mem_jvm_heap }}"
+        - name: CONFIG_QUERY_MAX_MEMORY_PER_NODE
+          value: "{{ .Values.trino.config.query_max_memory_per_node }}"
+        - name: CONFIG_QUERY_MAX_MEMORY
+          value: "{{ .Values.trino.config.query_max_memory }}"
+        - name: CONFIG_MEMORY_HEAP_HEADROOM_PER_NODE
+          value: "{{ .Values.trino.config.memory_heap_headroom_per_node }}"
+        - name: CONFIG_MAX_SPILL_PER_NODE
+          value: "{{ .Values.trino.config.max_spill_per_node }}"
+        - name: CONFIG_QUERY_MAX_SPILL_PER_NODE
+          value: "{{ .Values.trino.config.query_max_spill_per_node }}"
         resources:
           limits:
             memory: {{ .Values.trino.mem_limit_coordinator }}
@@ -155,13 +168,16 @@ spec:
         emptyDir: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   labels:
     app: trino-worker
   name: trino-worker
   namespace: walden
 spec:
+  serviceName: trino-worker
+  # Allow changes to deploy in parallel
+  podManagementPolicy: Parallel
   replicas: {{ .Values.trino.worker_replicas }}
   selector:
     matchLabels:
@@ -212,6 +228,18 @@ spec:
           value: metastore
         - name: HIVE_METASTORE_PORT
           value: "9083"
+        - name: CONFIG_JVM_HEAP
+          value: "{{ .Values.trino.mem_jvm_heap }}"
+        - name: CONFIG_QUERY_MAX_MEMORY_PER_NODE
+          value: "{{ .Values.trino.config.query_max_memory_per_node }}"
+        - name: CONFIG_QUERY_MAX_MEMORY
+          value: "{{ .Values.trino.config.query_max_memory }}"
+        - name: CONFIG_MEMORY_HEAP_HEADROOM_PER_NODE
+          value: "{{ .Values.trino.config.memory_heap_headroom_per_node }}"
+        - name: CONFIG_MAX_SPILL_PER_NODE
+          value: "{{ .Values.trino.config.max_spill_per_node }}"
+        - name: CONFIG_QUERY_MAX_SPILL_PER_NODE
+          value: "{{ .Values.trino.config.query_max_spill_per_node }}"
         resources:
           limits:
             memory: {{ .Values.trino.mem_limit_worker }}
@@ -221,6 +249,8 @@ spec:
         volumeMounts:
         - name: etc
           mountPath: /trino-server/etc
+        - name: storage
+          mountPath: /storage # spill storage under /storage/spill
       volumes:
       - name: config
         configMap:
@@ -230,3 +260,12 @@ spec:
           name: trino-catalog
       - name: etc
         emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: storage
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.trino.disk_worker }}

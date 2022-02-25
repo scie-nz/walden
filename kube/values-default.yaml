@@ -17,6 +17,7 @@ image:
   devserver: docker.io/scienz/walden-devserver:2022.02.09
   metastore: docker.io/scienz/walden-metastore:2022.02.08
   superset: docker.io/scienz/walden-superset:2022.02.10
+  # TODO bump image when maven works:
   trino: docker.io/scienz/walden-trino:2022.02.09
 
 minio:
@@ -50,7 +51,25 @@ trino:
   worker_replicas: 1
   # The memory limits for each of the Trino pods
   # We start with very low values, increase to fit your system and workloads.
-  mem_limit_coordinator: 1Gi
-  mem_limit_worker: 1Gi
+  mem_limit_coordinator: 2Gi
+  mem_limit_worker: 2Gi
+  # The value of "-Xmx" provided to the JVM
+  mem_jvm_heap: 1536M
+  # Disk storage for "spill" storage as configured below
+  disk_worker: 25Gi
   # An external IP for the Trino service
   external_ip: ""
+
+  # Settings for trino_config.properties
+  # We start with very low values, increase to fit your system and workloads.
+  config:
+    # Note: query.max-memory-per-node + memory.heap-headroom-per-node cannot be larger than mem_jvm_heap
+    # query.max-memory-per-node (default: mem_jvm_heap * 0.3)
+    query_max_memory_per_node: 1024MB
+    # memory.heap-headroom-per-node (default: mem_jvm_heap * 0.3)
+    memory_heap_headroom_per_node: 512MB
+    # query.max-memory (default: 20GB)
+    query_max_memory: 4GB
+    # max-spill-per-node and query-max-spill-per-node (disk space, default: 100GB)
+    max_spill_per_node: 25GB
+    query_max_spill_per_node: 10GB

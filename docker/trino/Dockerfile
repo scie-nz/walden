@@ -21,7 +21,7 @@ RUN apt-get update --fix-missing \
 
 # Install Trino to /trino-server as a separate stage at the end.
 # Maximizes caching when switching versions.
-ENV TRINO_VERSION=370
+ENV TRINO_VERSION=371
 
 RUN curl https://repo1.maven.org/maven2/io/trino/trino-server/${TRINO_VERSION}/trino-server-${TRINO_VERSION}.tar.gz | tar xzf - \
   && mv -v trino-server-${TRINO_VERSION} trino-server \
