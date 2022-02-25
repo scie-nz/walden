@@ -1,6 +1,6 @@
 coordinator=$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo 'true'; else echo 'false'; fi")
 node-scheduler.include-coordinator=false
-http-server.http.port=8080
+http-server.http.port=80
 $(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo '
 # Password authentication configured via password-authenticator.properties
 # TODO Disabled for now - requires SSL and we don't have that yet.

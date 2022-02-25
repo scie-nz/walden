@@ -149,7 +149,7 @@ spec:
             memory: {{ .Values.trino.mem_limit_coordinator }}
         ports:
         - name: http
-          containerPort: 8080
+          containerPort: 80
         volumeMounts:
         - name: etc
           mountPath: /trino-server/etc
@@ -241,7 +241,7 @@ spec:
             memory: {{ .Values.trino.mem_limit_worker }}
         ports:
         - name: http
-          containerPort: 8080
+          containerPort: 80
         volumeMounts:
         - name: etc
           mountPath: /trino-server/etc

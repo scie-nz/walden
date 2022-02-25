@@ -177,7 +177,7 @@ The values we added to this schema earlier should also be visible via Superset.
 
 Trino also provides a dashboard UI showing basic activity. Set up a port-forward to access the dashboard on port `8080`:
 ```
-$ kubectl port-forward -n walden deployment/trino-coordinator 8080
+$ kubectl port-forward -n walden deployment/trino-coordinator 8080:80
 ```
 
 Go to [http://127.0.0.1:8080](`http://127.0.0.1:8080`) and log in with any value for the username (it doesn't matter).
