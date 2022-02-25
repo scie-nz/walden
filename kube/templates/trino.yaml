@@ -32,9 +32,8 @@ data:
 {{ .Files.Get "configs/trino_config.properties.template" | indent 4 }}
   postgres.properties: |
 {{ .Files.Get "configs/trino_postgres.properties" | indent 4 }}
-  # TODO switch filenames to *jvm.config.template:
-  jvm.config: |
-{{ .Files.Get "configs/trino_jvm.config" | indent 4 }}
+  jvm.config.template: |
+{{ .Files.Get "configs/trino_jvm.config.template" | indent 4 }}
   log.properties: |
 {{ .Files.Get "configs/trino_log.properties" | indent 4 }}
   node.properties.template: |

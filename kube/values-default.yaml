@@ -17,8 +17,7 @@ image:
   devserver: docker.io/scienz/walden-devserver:2022.02.25
   metastore: docker.io/scienz/walden-metastore:2022.02.08
   superset: docker.io/scienz/walden-superset:2022.02.10
-  # TODO bump image when maven works:
-  trino: docker.io/scienz/walden-trino:2022.02.09
+  trino: docker.io/scienz/walden-trino:2022.02.25
 
 minio:
   # The number of Minio replicas, must be at least four
