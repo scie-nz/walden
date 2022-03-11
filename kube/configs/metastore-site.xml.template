@@ -35,7 +35,15 @@
         <name>javax.jdo.option.ConnectionPassword</name>
         <value>$POSTGRES_PASSWORD</value>
     </property>
-     <property>
+    <property>
+        <name>fs.s3.awsAccessKeyId</name>
+        <value>$MINIO_ACCESS_KEY_ID</value>
+    </property>
+    <property>
+        <name>fs.s3.awsSecretAccessKey</name>
+        <value>$MINIO_ACCESS_KEY_SECRET</value>
+    </property>
+    <property>
         <name>fs.s3a.access.key</name>
         <value>$MINIO_ACCESS_KEY_ID</value>
     </property>

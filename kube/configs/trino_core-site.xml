@@ -1,4 +1,5 @@
 <configuration>
+  <!-- The below properties enable communication with Minio via s3a://bucketname/... URIs -->
   <property>
     <name>fs.s3.impl</name>
     <value>org.apache.hadoop.fs.s3native.NativeS3FileSystem</value>
@@ -22,5 +23,22 @@
   <property>
     <name>fs.s3a.secret.key</name>
     <value>__MINIO_ACCESS_KEY_SECRET</value>
+  </property>
+  <!-- The below properties enable communication with Alluxio via alluxio://alluxio:19998/... URIs -->
+  <property>
+    <name>fs.alluxio.impl</name>
+    <value>alluxio.hadoop.FileSystem</value>
+  </property>
+  <property>
+    <name>alluxio.user.file.writetype.default</name>
+    <value>CACHE_THROUGH</value>
+  </property>
+  <property>
+    <name>alluxio.worker.data.server.domain.socket.address</name>
+    <value>/opt/domain</value>
+  </property>
+  <property>
+    <name>alluxio.worker.data.server.domain.socket.as.uuid</name>
+    <value>true</value>
   </property>
 </configuration>

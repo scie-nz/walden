@@ -68,67 +68,64 @@ a [tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/).
 
 ### Use devserver to access Trino CLI
 
-Assuming the deployment succeeded, you can ssh into the pod corresponding to
-your devserver like so (make sure to replace `devserver-6c9fcf987c-9vznj`
-with your pod ID from `kubectl get pods -n walden`:
+Assuming the deployment succeeded, you can ssh into the `devserver` pod like so:
 ```
 $ kubectl exec -it -n walden deployment/devserver -- /bin/bash
 ```
 
-#### Create a test MinIO bucket
+The following steps are performed from within the `devserver` pod.
 
-Now that you are logged in to the devserver, you are ready to interact with
-your glorious data pond! To do so you first need to create a MinIO bucket,
-where you will store your data:
+#### Create a MinIO bucket
+
+Now that you are logged in to the devserver, you are ready to interact with your glorious data pond!
+
+Let's start by creating a bucket in MinIO, the object store service that's included in Walden. We will store data in these buckets:
 ```
 devserver# mc alias set walden-minio/ http://minio:9000 $MINIO_ACCESS_KEY_ID $MINIO_ACCESS_KEY_SECRET
 Added `walden-minio` successfully.
 
-devserver# mc mb walden-minio/test
-Bucket created successfully: `walden-minio/test`
+devserver# mc mb walden-minio/direct
+Bucket created successfully: `walden-minio/direct`
 ```
 
-Note -- `walden-minio` is an alias to the MinIO deployment created
-automatically when we start the devserver. We have created a
-bucket called "test".
+Note -- `walden-minio` is an alias to the MinIO deployment created automatically when we start the devserver. We have created a bucket called "direct".
 
-#### Use Trino to create a schema and a table
+#### Use Trino to create a schema and table in MinIO
 
-First, run this from the devserver shell:
+First, run the following command from the devserver shell. This starts a `trino-cli` session with the `direct` schema against the `hive` data storage provided by Walden.
 ```
-devserver# trino test
+devserver# trino direct
 ```
 
-This command starts a `trino-cli` session with the `test` schema against the `hive` data storage provided by Walden.
-The `test` schema does not actually exist in the Hive metastore yet, so we need to create it:
+We will use this schema to talk directly to the MinIO storage. The `direct` schema does not actually exist in the Hive metastore yet, so we need to create it:
 ```
-trino:test> CREATE SCHEMA IF NOT EXISTS test WITH (location='s3a://test/');
+trino:direct> CREATE SCHEMA IF NOT EXISTS direct WITH (location='s3a://direct/');
 CREATE SCHEMA
 ```
 
 If you run `SHOW SCHEMAS` you should see:
 ```
-trino:test> SHOW SCHEMAS;
+trino:direct> SHOW SCHEMAS;
        Schema
 --------------------
  default
+ direct
  information_schema
- test
 (3 rows)
 ```
 
 Now we can create a table and store some data:
 ```
-trino:test> CREATE TABLE dim_foo(bar BIGINT);
+trino:direct> CREATE TABLE dim_foo(bar BIGINT);
 CREATE TABLE
 
-trino:test> INSERT INTO dim_foo VALUES 1, 2, 3, 4;
+trino:direct> INSERT INTO dim_foo VALUES 1, 2, 3, 4;
 INSERT: 4 rows
 ```
 
 Assuming everything is working, you should be able to query the stored values:
 ```
-trino:test> SELECT bar FROM dim_foo;
+trino:direct> SELECT bar FROM dim_foo;
  bar
 -----
    1
@@ -136,10 +133,101 @@ trino:test> SELECT bar FROM dim_foo;
    3
    4
 (4 rows)
+```
 
-Query 20220208_051155_00006_zfgnn, FINISHED, 1 node
-Splits: 2 total, 2 done (100.00%)
-0.36 [4 rows, 250B] [11 rows/s, 691B/s]
+Now we can press `Ctrl+D` to exit the Trino console session, and look at the files created in the underlying MinIO bucket we created earlier:
+```
+trino:direct> ^D
+
+devserver# mc ls -r walden-minio/direct
+[2022-03-11 06:22:24 UTC]     0B STANDARD dim_foo/
+[2022-03-11 06:21:42 UTC]   250B STANDARD 20220311_062141_00005_26e8n_9d96d247-6da3-49f9-a537-b0bc897879b9
+```
+
+We can clean up our test data by deleting the table and then the schema:
+```
+devserver# trino direct
+
+trino:direct> DROP TABLE dim_foo;
+DROP TABLE
+trino:direct> DROP SCHEMA direct;
+DROP SCHEMA
+trino:direct> ^D
+
+devserver# mc ls walden-minio/direct
+<empty>
+```
+
+#### Use Alluxio to serve MinIO data
+
+Walden comes packaged with Alluxio, which provides caching and several adapters on multiple backend stores. Alluxio can be used to support other storage types that are not natively supported by Trino, such as external NFS servers.
+
+In this case we will point Alluxio to the `alluxio` bucket that we created earlier. The default Walden configuration in `values.yaml` configures Alluxio to use a MinIO bucket named `alluxio` as its backing storage.
+
+In this case we create a new `alluxio` bucket, then start a new Trino session and create an `alluxio` schema that points to the `alluxio` service:
+```
+devserver# mc mb walden-minio/alluxio
+Bucket created successfully: `walden-minio/alluxio`
+
+devserver# trino alluxio
+
+trino:alluxio> CREATE SCHEMA IF NOT EXISTS alluxio WITH (location='alluxio://alluxio:19998/');
+CREATE SCHEMA
+```
+
+Again we can check `SHOW SCHEMAS`:
+```
+trino:alluxio> SHOW SCHEMAS;
+       Schema
+--------------------
+ alluxio
+ default
+ direct
+ information_schema
+(3 rows)
+```
+
+We create a table and store some data:
+```
+trino:alluxio> CREATE TABLE dim_bar(baz BIGINT);
+CREATE TABLE
+
+trino:alluxio> INSERT INTO dim_bar VALUES 4, 5, 6, 7;
+INSERT: 4 rows
+```
+
+And finally we can fetch the data back:
+```
+trino:alluxio> SELECT baz FROM dim_bar;
+ baz
+-----
+   4
+   5
+   6
+   7
+(4 rows)
+```
+
+Now we can press `Ctrl+D` to exit the Trino session, then use the MinIO CLI to check the contents of the `alluxio` bucket:
+```
+devserver # mc ls -r walden-minio/alluxio
+[2022-03-11 07:17:16 UTC]     0B STANDARD dim_bar/
+[2022-03-11 07:23:53 UTC]   253B STANDARD dim_bar/20220311_102351_00139_giawv_ecfd5036-44d3-47da-9f87-6e02e04b8c5b
+```
+
+The data can again be cleaned up via trino:
+```
+
+devserver# trino alluxio
+
+trino:alluxio> DROP TABLE dim_bar;
+DROP TABLE
+trino:alluxio> DROP SCHEMA alluxio;
+DROP SCHEMA
+trino:alluxio> ^D
+
+devserver# mc ls walden-minio/alluxio
+<empty>
 ```
 
 ### Explore data with Superset

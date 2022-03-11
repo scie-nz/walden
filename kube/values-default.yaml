@@ -5,6 +5,7 @@
 # 3. Deploy with "./deploy.sh <myvalues.yaml>"
 
 image:
+  alluxio: docker.io/alluxio/alluxio:2.7.3
   # Utility image for initContainers: config templating, waiting for dependencies to start.
   busybox: docker.io/library/busybox:latest
   minio: docker.io/minio/minio:RELEASE.2022-02-05T04-40-59Z
@@ -15,9 +16,25 @@ image:
   # The latest release versions for Walden images.
   # See walden/docker/* for image definitions.
   devserver: docker.io/scienz/walden-devserver:2022.02.25
-  metastore: docker.io/scienz/walden-metastore:2022.02.08
-  superset: docker.io/scienz/walden-superset:2022.02.10
-  trino: docker.io/scienz/walden-trino:2022.02.25
+  metastore: docker.io/scienz/walden-metastore:2022.03.11
+  superset: docker.io/scienz/walden-superset:2022.03.11b
+  trino: docker.io/scienz/walden-trino:2022.03.11
+
+alluxio:
+  # The root mount to be accessed by Alluxio.
+  # By default this is a Minio bucket named "alluxio"
+  # Alluxio is preconfigured with the Minio endpoint and credentials.
+  # Note that the bucket needs to be created in Minio manually before it will work. (TODO: autocreate this bucket?)
+  # Other options include an NFS mount, which can be enabled via the following option.
+  root_mount: s3://alluxio/
+
+  # Enabling an NFS volume mount (at /mnt/nfs) in the Alluxio pods.
+  # You can add the volume to Alluxio by either assigning root_mount above to /mnt/nfs,
+  # or via the alluxio CLI 'mount' command.
+  nfs_server: "" # an IP or hostname, or empty to disable
+  nfs_path: "" # a directory path, or empty to disable
+
+  # TODO could add an external_ip option here
 
 minio:
   # The number of Minio replicas, must be at least four

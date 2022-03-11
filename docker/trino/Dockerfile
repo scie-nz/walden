@@ -1,7 +1,7 @@
 # Use whatever is the latest JRE 11.0.x version
 # -> https://hub.docker.com/r/azul/zulu-openjdk/tags?page=1&name=11
 # Trino requires JRE 11, minimum 11.0.11 - newer versions are not tested
-FROM azul/zulu-openjdk:11.0.14
+FROM azul/zulu-openjdk:11.0.14.1
 
 ENV DEBIAN_FRONTEND="noninteractive" \
   MVN_MIRROR="https://repo1.maven.org/maven2/"
@@ -21,7 +21,8 @@ RUN apt-get update --fix-missing \
 
 # Install Trino to /trino-server as a separate stage at the end.
 # Maximizes caching when switching versions.
-ENV TRINO_VERSION=371
+# Note that Trino already includes alluxio-shaded-client-<version>.jar
+ENV TRINO_VERSION=373
 
 RUN curl https://repo1.maven.org/maven2/io/trino/trino-server/${TRINO_VERSION}/trino-server-${TRINO_VERSION}.tar.gz | tar xzf - \
   && mv -v trino-server-${TRINO_VERSION} trino-server \

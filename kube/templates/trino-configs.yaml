@@ -1,0 +1,44 @@
+# These configmaps are shared by the trino coordinator and worker pods
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-catalog
+  namespace: walden
+data:
+  # Configure Trino to write Hive data via MinIO
+  core-site.xml: |
+{{ .Files.Get "configs/trino_core-site.xml" | indent 4 }}
+  hive.properties: |
+{{ .Files.Get "configs/trino_hive.properties" | indent 4 }}
+  alluxio.properties: |
+{{ .Files.Get "configs/trino_alluxio.properties" | indent 4 }}
+
+  # Enable TPCH benchmark schemas
+  # See: https://trino.io/docs/current/connector/tpch.html
+  tpch.properties: |
+    connector.name=tpch
+
+{{- if .Values.trino.catalog_custom }}
+  # Custom user catalog entry
+  custom.properties: |
+{{ .Values.trino.catalog_custom | indent 4 }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-config
+  namespace: walden
+data:
+  config.properties.template: |
+{{ .Files.Get "configs/trino_config.properties.template" | indent 4 }}
+  postgres.properties: |
+{{ .Files.Get "configs/trino_postgres.properties" | indent 4 }}
+  jvm.config.template: |
+{{ .Files.Get "configs/trino_jvm.config.template" | indent 4 }}
+  log.properties: |
+{{ .Files.Get "configs/trino_log.properties" | indent 4 }}
+  node.properties.template: |
+{{ .Files.Get "configs/trino_node.properties.template" | indent 4 }}
+  password-authenticator.properties: |
+{{ .Files.Get "configs/trino_password-authenticator.properties" | indent 4 }}
