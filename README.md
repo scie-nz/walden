@@ -90,7 +90,7 @@ Bucket created successfully: `walden-minio/direct`
 
 Note -- `walden-minio` is an alias to the MinIO deployment created automatically when we start the devserver. We have created a bucket called "direct".
 
-#### Use Trino to create a schema and table in MinIO
+#### Connect Trino to MinIO directly
 
 First, run the following command from the devserver shell. This starts a `trino-cli` session with the `direct` schema against the `hive` data storage provided by Walden.
 ```
@@ -158,14 +158,16 @@ devserver# mc ls walden-minio/direct
 <empty>
 ```
 
-#### Use Alluxio to serve MinIO data
+#### Connect Trino to MinIO via Alluxio
 
-Walden comes packaged with Alluxio, which provides caching and several adapters on multiple backend stores. Alluxio can be used to support other storage types that are not natively supported by Trino, such as external NFS servers.
+Walden comes packaged with Alluxio, which provides several benefits for processing data across a variety of backend storage systems. Alluxio can be used to support other storage types that are not natively supported by Trino, such as external NFS servers, while also providing a caching layer in front of that underlying storage.
 
-In this case we will point Alluxio to the `alluxio` bucket that we created earlier. The default Walden configuration in `values.yaml` configures Alluxio to use a MinIO bucket named `alluxio` as its backing storage.
+In this case we will point Alluxio to a bucket named `alluxio` that we will create in the included MinIO instance.
 
-In this case we create a new `alluxio` bucket, then start a new Trino session and create an `alluxio` schema that points to the `alluxio` service:
+In the `devserver` pod, we create a new `alluxio` bucket using the MinIO CLI. Then we start a new Trino session and create an `alluxio` schema that points to the `alluxio` service:
 ```
+$ kubectl exec -it -n walden deployment/devserver -- /bin/bash
+
 devserver# mc mb walden-minio/alluxio
 Bucket created successfully: `walden-minio/alluxio`
 
@@ -189,7 +191,7 @@ trino:alluxio> SHOW SCHEMAS;
 
 We create a table and store some data:
 ```
-trino:alluxio> CREATE TABLE dim_bar(baz BIGINT);
+trino:alluxio> CREATE TABLE IF NOT EXISTS dim_bar(baz BIGINT);
 CREATE TABLE
 
 trino:alluxio> INSERT INTO dim_bar VALUES 4, 5, 6, 7;
@@ -215,9 +217,8 @@ devserver # mc ls -r walden-minio/alluxio
 [2022-03-11 07:23:53 UTC]   253B STANDARD dim_bar/20220311_102351_00139_giawv_ecfd5036-44d3-47da-9f87-6e02e04b8c5b
 ```
 
-The data can again be cleaned up via trino:
+The data can be cleaned up via trino:
 ```
-
 devserver# trino alluxio
 
 trino:alluxio> DROP TABLE dim_bar;
@@ -229,6 +230,73 @@ trino:alluxio> ^D
 devserver# mc ls walden-minio/alluxio
 <empty>
 ```
+
+#### Connect Trino to NFS via Alluxio
+
+In the previous section we connected Alluxio to the MinIO instance, and then used Trino to interact with Alluxio. This does have some benefit in terms of caching, but the real value in using Alluxio comes when we are integrating with external services.
+
+In this example, we will connect Walden to an NFS server, using Alluxio to broker the NFS volume and serve it to Trino.
+
+Walden includes two configuration options in its `values.yaml` as an example for enabling an external NFS mount:
+```
+alluxio:
+  nfs_server: "<ip/hostname>"
+  nfs_path: "</nfs/server/directory>"
+```
+
+When those options are both provided, the worker pods will all automatically mount the NFS volume to `/mnt/nfs`, making it available for access and caching in Alluxio, and therefore it in Trino.
+
+We can use the Alluxio CLI to mount the NFS volume to `/nfs` in the virtual Alluxio filesystem:
+```
+$ kubectl exec -it -n walden statefulset/alluxio-leader -c leader -- /bin/bash
+
+alluxio$ ./bin/alluxio fs mount --shared /nfs /mnt/nfs
+Mounted /mnt/nfs at /nfs
+```
+
+We then view the list of volumes and verify that files we expect are mounted into alluxio:
+```
+alluxio$ ./bin/alluxio fs mount
+/mnt/nfs       on  /nfs  (local, capacity=123TB, used=12TB(10%), not read-only, shared, properties={})
+s3://alluxio/  on  /     (s3, capacity=-1B, used=-1B, not read-only, not shared, properties={})
+
+alluxio$ ./bin/alluxio fs ls /nfs
+drwxrwxrwx nobody users 0           PERSISTED 02-13-2022 21:02:18:000  DIR /nfs/example1
+-rw-rw-rw- nobody users 21520507993 PERSISTED 02-08-2022 20:02:39:000   0% /nfs/example2.zst
+```
+
+We can now query the mounted NFS volume from Trino, which has come preconfigured to access Alluxio.
+
+In this example we have a dataset of [Wikipedia articles](https://meta.wikimedia.org/wiki/Data_dump_torrents) that have been converted to ORC format.
+
+The converted `.orc` files are in `/mnt/nfs/wiki` directory on the NFS volume. We use `CREATE TABLE` with `external_location` pointing to the existing location within alluxio:
+```
+$ kubectl exec -it -n walden deployment/devserver -- /bin/bash
+
+devserver # trino alluxio
+
+trino:alluxio> CREATE TABLE IF NOT EXISTS wiki (
+  title VARCHAR,
+  text VARCHAR,
+  links ARRAY<VARCHAR>)
+WITH (
+  external_location = 'alluxio://alluxio:19998/nfs/wiki/orc/',
+  format = 'ORC');
+```
+
+Now the ORC data on our NFS volume can be queried by Trino:
+```
+trino:alluxio> SELECT title,links FROM wiki WHERE cardinality(links) > 0 LIMIT 3;
+                        title                        |                       links                      >
+-----------------------------------------------------+-------------------------------------------------->
+ Helen Hughes (economist)                            | [Prague, Sydney, Centre for Independent Studies, >
+ Category:Canyons and gorges of Georgia (U.S. state) | [Wikipedia:Category, canyon, U.S. state, Georgia >
+ Transnational Corporation of Nigeria                | [Energy, Electric power, Hospitality, Lagos, Lago>
+```
+
+For this example we've added an NFS mount into Alluxio, and then defined Trino tables to query structured data located on that NFS mount.
+
+Using Alluxio for this allows us to support filesystems like NFS, while also providing its own caching for the benefit of query performance on repeated lookups.
 
 ### Explore data with Superset
 
