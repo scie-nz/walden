@@ -31,7 +31,17 @@
   </property>
   <property>
     <name>alluxio.user.file.writetype.default</name>
-    <value>CACHE_THROUGH</value>
+    <!--
+        ASYNC_THROUGH allows Alluxio workers to acknowledge writes after they are stored in Alluxio's local
+        in-memory/on-disk cache, but before they are written to the underlying storage, e.g. Minio or NFS.
+
+        This can make writes go much faster, but can create problems if:
+         - Alluxio crashes before the data is flushed
+         - If the underlying storage is accessed directly (as in, via a side channel).
+
+        If either of these is a concern, use CACHE_THROUGH instead.
+    -->
+    <value>ASYNC_THROUGH</value>
   </property>
   <property>
     <name>alluxio.worker.data.server.domain.socket.address</name>

@@ -149,8 +149,10 @@ spec:
         volumeMounts:
         - name: alluxio-domain
           mountPath: /opt/domain
-        - name: alluxio-mem
+        - name: alluxio-memcache
           mountPath: /dev/shm
+        - name: diskcache
+          mountPath: /mnt/cache
 {{- if and .Values.alluxio.nfs_server .Values.alluxio.nfs_path }}
         - name: nfs-data
           mountPath: /mnt/nfs
@@ -214,8 +216,10 @@ spec:
         volumeMounts:
         - name: alluxio-domain
           mountPath: /opt/domain
-        - name: alluxio-mem
+        - name: alluxio-memcache
           mountPath: /dev/shm
+        - name: diskcache
+          mountPath: /mnt/cache
 {{- if and .Values.alluxio.nfs_server .Values.alluxio.nfs_path }}
         - name: nfs-data
           mountPath: /mnt/nfs
@@ -232,10 +236,10 @@ spec:
         emptyDir: {}
       - name: alluxio-domain
         emptyDir: {}
-      - name: alluxio-mem
+      - name: alluxio-memcache
         emptyDir:
           medium: "Memory"
-          sizeLimit: 1G
+          sizeLimit: {{ .Values.alluxio.mem_cache }}i # "nG" => "nGi"
 {{- if and .Values.alluxio.nfs_server .Values.alluxio.nfs_path }}
       - name: nfs-data
         nfs:
@@ -253,3 +257,11 @@ spec:
       resources:
         requests:
           storage: {{ .Values.trino.disk_worker }}
+  - metadata:
+      name: diskcache
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.alluxio.disk_cache }}i # "nG" => "nGi"

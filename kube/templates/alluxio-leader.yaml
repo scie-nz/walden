@@ -1,6 +1,24 @@
 apiVersion: v1
 kind: Service
 metadata:
+  name: alluxio-web
+  labels:
+    app: alluxio-leader
+spec:
+{{- if .Values.alluxio.external_ip }}
+  externalIPs:
+  - {{ .Values.alluxio.external_ip }}
+{{- end }}
+  ports:
+  - name: web
+    port: 80
+    targetPort: web
+  selector:
+    app: alluxio-leader
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: alluxio
   labels:
     app: alluxio-leader
@@ -8,18 +26,21 @@ spec:
   ports:
   - name: rpc
     port: 19998
+    targetPort: rpc
   - name: web
     port: 19999
+    targetPort: web
   - name: job-rpc
     port: 20001
+    targetPort: job-rpc
   - name: job-web
     port: 20002
+    targetPort: job-web
+  # These might not be necessary (only for HA leader?)
   - name: embedded
     port: 19200
   - name: job-embedded
     port: 20003
-  - name: hub-agent
-    port: 30075
   selector:
     app: alluxio-leader
 ---
@@ -101,10 +122,10 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 2
         ports:
-        - containerPort: 19998
-          name: rpc
-        - containerPort: 19999
-          name: web
+        - name: rpc
+          containerPort: 19998
+        - name: web
+          containerPort: 19999
         volumeMounts:
         - name: storage
           mountPath: /opt/alluxio/journal
@@ -154,10 +175,10 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 2
         ports:
-        - containerPort: 20001
-          name: job-rpc
-        - containerPort: 20002
-          name: job-web
+        - name: job-rpc
+          containerPort: 20001
+        - name: job-web
+          containerPort: 20002
         volumeMounts:
         - name: storage
           mountPath: /opt/alluxio/journal

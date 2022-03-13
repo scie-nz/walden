@@ -35,7 +35,6 @@ spec:
         app: trino-coordinator
     spec:
       nodeSelector:
-        # We only build an amd64 trino image
         kubernetes.io/arch: amd64
       initContainers:
       - name: copy-configs
@@ -44,8 +43,8 @@ spec:
         command:
         - /bin/sh
         - -c
-        # TODO We currently generate a credentials file as an example.
-        #      Trino requires that SSL be enabled before credentials will be used.
+        # Note: We currently generate a credentials file as an example.
+        #       Trino requires that SSL be enabled before credentials can be used.
         - |
           cp -v /conf/* /etc-out/ &&
           mkdir -p /etc-out/catalog &&

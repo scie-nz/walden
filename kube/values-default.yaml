@@ -22,23 +22,32 @@ image:
 
 alluxio:
   # The root mount to be accessed by Alluxio.
-  # By default this is a Minio bucket named "alluxio"
+  # By default this is a Minio bucket named "alluxio".
+  # The "alluxio" bucket must be created in Minio manually - see walden README for example.
   # Alluxio is preconfigured with the Minio endpoint and credentials.
-  # Note that the bucket needs to be created in Minio manually before it will work. (TODO: autocreate this bucket?)
   # Other options include an NFS mount, which can be enabled via the following option.
   root_mount: s3://alluxio/
-
+  # The amount of memory to use for cache in each Alluxio/Trino worker.
+  # This can greatly speed up repeat access to data via Alluxio.
+  # This is allocated on startup, and is "used" even if the workers are idle.
+  # Note that Alluxio workers are colocated with Trino workers, so the sum total of
+  # alluxio.mem_cache and trino.mem_limit_worker must stay below total node memory.
+  mem_cache: 1G # suffix must be "M" or "G"
+  # The amount of local storage to use for cache in each Alluxio/Trino worker.
+  # This can greatly speed up repeat access to remote network data via Alluxio.
+  # This is mounted as a persistent volume on startup.
+  disk_cache: 10G # suffix must be "M" or "G"
   # Enabling an NFS volume mount (at /mnt/nfs) in the Alluxio pods.
   # You can add the volume to Alluxio by either assigning root_mount above to /mnt/nfs,
   # or via the alluxio CLI 'mount' command.
   nfs_server: "" # an IP or hostname, or empty to disable
   nfs_path: "" # a directory path, or empty to disable
-
-  # TODO could add an external_ip option here
+  # An external IP for the Alluxio service
+  external_ip: ""
 
 minio:
   # The number of Minio replicas, must be at least four
-  replicas: 4
+  replicas: 4 # minimum 4
   # The CPU architecture for Minio nodes, each must be running the same arch
   arch: amd64
   # The memory limit for each Minio pod.
@@ -63,11 +72,13 @@ superset:
   external_ip: ""
 
 trino:
-  # Number of worker replicas. By default the workers avoid colocating with the coordinator.
+  # Number of worker replicas. Each replica also gets an Alluxio worker.
   worker_replicas: 1
   # The memory limits for each of the Trino pods
   # We start with very low values, increase to fit your system and workloads.
   mem_limit_coordinator: 2Gi
+  # Note that Alluxio workers are colocated with Trino workers, so the sum total of
+  # alluxio.mem_cache and trino.mem_limit_worker must stay below total node memory.
   mem_limit_worker: 2Gi
   # The value of "-Xmx" provided to the JVM
   mem_jvm_heap: 1536M
