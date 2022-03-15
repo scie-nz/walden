@@ -36,6 +36,13 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
+{{- if .Values.node.selector.trino_coordinator }}
+{{ toYaml .Values.node.selector.trino_coordinator | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.trino_coordinator }}
+      tolerations:
+{{ toYaml .Values.node.toleration.trino_coordinator | indent 8 }}
+{{- end }}
       initContainers:
       - name: copy-configs
         # Use walden-trino image, rather than busybox, to have access to htpasswd command

@@ -27,6 +27,14 @@ spec:
       labels:
         app: metastore-postgres
     spec:
+{{- if .Values.node.selector.metastore_db }}
+      nodeSelector:
+{{ toYaml .Values.node.selector.metastore_db | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.metastore_db }}
+      tolerations:
+{{ toYaml .Values.node.toleration.metastore_db | indent 8 }}
+{{- end }}
       containers:
       - name: postgres
         image: {{ .Values.image.postgres }}

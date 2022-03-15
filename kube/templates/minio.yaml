@@ -52,6 +52,13 @@ spec:
       # However, Minio complains if we have mixed architectures, so lock it to only run on a single arch.
       nodeSelector:
         kubernetes.io/arch: {{ .Values.minio.arch }}
+{{- if .Values.node.selector.minio }}
+{{ toYaml .Values.node.selector.minio | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.minio }}
+      tolerations:
+{{ toYaml .Values.node.toleration.minio | indent 8 }}
+{{- end }}
       # Ensure that each minio pod is placed on a separate node from other minio pods.
       # If you do not have at least four nodes, you can comment this out.
       affinity:

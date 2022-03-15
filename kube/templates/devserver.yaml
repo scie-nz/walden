@@ -17,6 +17,13 @@ spec:
       nodeSelector:
         # We only build an amd64 devserver image
         kubernetes.io/arch: amd64
+{{- if .Values.node.selector.devserver }}
+{{ toYaml .Values.node.selector.devserver | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.devserver }}
+      tolerations:
+{{ toYaml .Values.node.toleration.devserver | indent 8 }}
+{{- end }}
       containers:
       - image: {{ .Values.image.devserver }}
         name: devserver

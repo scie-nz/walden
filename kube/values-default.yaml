@@ -48,7 +48,7 @@ alluxio:
 minio:
   # The number of Minio replicas, must be at least four
   replicas: 4 # minimum 4
-  # The CPU architecture for Minio nodes, each must be running the same arch
+  # The CPU architecture for Minio nodes, all nodes must be running the same arch
   arch: amd64
   # The memory limit for each Minio pod.
   # Minio recommends 8GB for pods with up to 1TB storage/pod, or 16GB for up to 10TB storage/pod.
@@ -108,3 +108,29 @@ trino:
   #  connection-url=jdbc:postgresql://example.com:5432/dbname
   #  connection-user=postgresUserHere
   #  connection-password=postgresPasswordHere
+
+# Optional configuration of nodeSelectors/tolerations for Walden components.
+# For example, superset/trino workers could be allocated to tainted machines with dedicated resources.
+node:
+  selector:
+    alluxio_leader: {}
+    devserver: {}
+    metastore: {}
+    metastore_db: {}
+    minio: {}
+    superset: {}
+    superset_db: {}
+    superset_worker: {}
+    trino_coordinator: {}
+    trino_worker: {}
+  toleration:
+    alluxio_leader: {}
+    devserver: {}
+    metastore: {}
+    metastore_db: {}
+    minio: {}
+    superset: {}
+    superset_db: {}
+    superset_worker: {}
+    trino_coordinator: {}
+    trino_worker: {}

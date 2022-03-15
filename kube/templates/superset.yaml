@@ -53,6 +53,13 @@ spec:
       nodeSelector:
         # We only build an amd64 superset image
         kubernetes.io/arch: amd64
+{{- if .Values.node.selector.superset_worker }}
+{{ toYaml .Values.node.selector.superset_worker | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.superset_worker }}
+      tolerations:
+{{ toYaml .Values.node.toleration.superset_worker | indent 8 }}
+{{- end }}
       initContainers:
       - name: wait-for-postgres
         image: {{ .Values.image.busybox }}
@@ -132,6 +139,13 @@ spec:
       nodeSelector:
         # We only build an amd64 superset image
         kubernetes.io/arch: amd64
+{{- if .Values.node.selector.superset }}
+{{ toYaml .Values.node.selector.superset | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.superset }}
+      tolerations:
+{{ toYaml .Values.node.toleration.superset | indent 8 }}
+{{- end }}
       initContainers:
 
       - name: wait-for-postgres

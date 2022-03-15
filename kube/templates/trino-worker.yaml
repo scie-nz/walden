@@ -25,6 +25,13 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
+{{- if .Values.node.selector.trino_worker }}
+{{ toYaml .Values.node.selector.trino_worker | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.trino_worker }}
+      tolerations:
+{{ toYaml .Values.node.toleration.trino_worker | indent 8 }}
+{{- end }}
       terminationGracePeriodSeconds: 10
       initContainers:
       - name: copy-configs

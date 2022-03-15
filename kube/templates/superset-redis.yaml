@@ -32,9 +32,14 @@ spec:
       labels:
         app: superset-redis
     spec:
-      # Doesn't strictly need to run on arm64
+{{- if .Values.node.selector.superset_db }}
       nodeSelector:
-        kubernetes.io/arch: arm64
+{{ toYaml .Values.node.selector.superset_db | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.superset_db }}
+      tolerations:
+{{ toYaml .Values.node.toleration.superset_db | indent 8 }}
+{{- end }}
       containers:
       - name: server
         image: {{ .Values.image.redis }}

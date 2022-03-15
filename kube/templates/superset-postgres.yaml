@@ -27,6 +27,14 @@ spec:
       labels:
         app: superset-postgres
     spec:
+{{- if .Values.node.selector.superset_db }}
+      nodeSelector:
+{{ toYaml .Values.node.selector.superset_db | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.superset_db }}
+      tolerations:
+{{ toYaml .Values.node.toleration.superset_db | indent 8 }}
+{{- end }}
       containers:
       - name: postgres
         image: {{ .Values.image.postgres }}

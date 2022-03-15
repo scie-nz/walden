@@ -45,6 +45,13 @@ spec:
       nodeSelector:
         # We only build an amd64 metastore image
         kubernetes.io/arch: amd64
+{{- if .Values.node.selector.metastore }}
+{{ toYaml .Values.node.selector.metastore | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.metastore }}
+      tolerations:
+{{ toYaml .Values.node.toleration.metastore | indent 8 }}
+{{- end }}
       initContainers:
       - name: wait-for-postgres
         image: {{ .Values.image.busybox }}

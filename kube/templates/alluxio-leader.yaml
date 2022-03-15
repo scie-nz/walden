@@ -62,6 +62,14 @@ spec:
       labels:
         app: alluxio-leader
     spec:
+{{- if .Values.node.selector.alluxio_leader }}
+      nodeSelector:
+{{ toYaml .Values.node.selector.alluxio_leader | indent 8 }}
+{{- end }}
+{{- if .Values.node.toleration.alluxio_leader }}
+      tolerations:
+{{ toYaml .Values.node.toleration.alluxio_leader | indent 8 }}
+{{- end }}
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
