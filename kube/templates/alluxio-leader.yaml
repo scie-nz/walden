@@ -62,8 +62,10 @@ spec:
       labels:
         app: alluxio-leader
     spec:
-{{- if .Values.node.selector.alluxio_leader }}
       nodeSelector:
+        # There is only an amd64 alluxio image
+        kubernetes.io/arch: amd64
+{{- if .Values.node.selector.alluxio_leader }}
 {{ toYaml .Values.node.selector.alluxio_leader | indent 8 }}
 {{- end }}
 {{- if .Values.node.toleration.alluxio_leader }}

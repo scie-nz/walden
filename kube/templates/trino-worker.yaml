@@ -34,6 +34,7 @@ spec:
 {{- end }}
       terminationGracePeriodSeconds: 10
       initContainers:
+
       - name: copy-configs
         image: {{ .Values.image.busybox }}
         command:
@@ -63,6 +64,18 @@ spec:
           mountPath: /catalog
         - name: trino-etc
           mountPath: /etc-out
+
+      - name: wait-for-alluxio
+        image: {{ .Values.image.busybox }}
+        command:
+        - /bin/sh
+        - -c
+        - until nc -zv $ALLUXIO_LEADER_HOST $ALLUXIO_LEADER_PORT -w1; do echo 'waiting for alluxio-leader'; sleep 1; done
+        env:
+        - name: ALLUXIO_LEADER_HOST
+          value: alluxio
+        - name: ALLUXIO_LEADER_PORT
+          value: "19999"
 
       containers:
 
