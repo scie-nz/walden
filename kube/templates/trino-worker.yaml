@@ -108,7 +108,7 @@ spec:
         - name: trino-etc
           mountPath: /trino-server/etc
         - name: storage
-          mountPath: /storage # spill storage under /storage/spill
+          mountPath: /var/presto/data
         - name: alluxio-domain
           mountPath: /opt/domain
 

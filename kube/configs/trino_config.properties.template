@@ -1,11 +1,6 @@
-coordinator=$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo 'true'; else echo 'false'; fi")
+coordinator=$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo true; else echo false; fi")
 node-scheduler.include-coordinator=false
 http-server.http.port=80
-$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo '
-# Password authentication configured via password-authenticator.properties
-# Note: Disabled for now - requires SSL certs and we don't have that yet.
-#http-server.authentication.type=PASSWORD
-'; else echo ''; fi")
 
 # This is the max amount of user memory a query can use on a worker.
 # Default: JVM max memory * 0.3
@@ -24,7 +19,7 @@ memory.heap-headroom-per-node=$(echo $CONFIG_MEMORY_HEAP_HEADROOM_PER_NODE)
 spill-enabled=true
 spill-compression-enabled=true
 # Directory where spilled content is written.
-spiller-spill-path=/storage/spill
+spiller-spill-path=/var/presto/data/spill
 # Max spill space to be used by all queries on a single node.
 max-spill-per-node=$(echo $CONFIG_MAX_SPILL_PER_NODE)
 # Max spill space to be used by a single query on a single node.
