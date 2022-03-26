@@ -19,11 +19,20 @@ memory.heap-headroom-per-node=$(echo $CONFIG_MEMORY_HEAP_HEADROOM_PER_NODE)
 spill-enabled=true
 spill-compression-enabled=true
 # Directory where spilled content is written.
-spiller-spill-path=/var/presto/data/spill
+# This is WITHIN the hive/alluxio storage, not local disk
+spiller-spill-path=/trino-spill
 # Max spill space to be used by all queries on a single node.
 max-spill-per-node=$(echo $CONFIG_MAX_SPILL_PER_NODE)
 # Max spill space to be used by a single query on a single node.
 query-max-spill-per-node=$(echo $CONFIG_QUERY_MAX_SPILL_PER_NODE)
+
+# Increase caps on row size 8x. This may reduce errors like
+# "PageTooLargeException: Remote page is too large" when handling large arrays.
+# See also https://github.com/trinodb/trino/issues/10292
+# default 16MB:
+node-manager.http-client.max-content-length=128MB
+# default 32MB:
+exchange.http-client.max-content-length=256MB
 
 # The number of concurrent writer threads per worker per query.
 # Default: 1
