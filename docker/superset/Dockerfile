@@ -1,6 +1,6 @@
 # Based on the latest stable release
-# TODO: After this has been upgraded to 1.5.x, update psycopg2-binary below to whatever's latest
-FROM apache/superset:1.4.1
+# TODO: After this has been upgraded to 1.5.x, update stuck dependencies below to whatever's latest
+FROM apache/superset:1.4.2
 
 # Install a selection of drivers for connecting Superset to various common database types.
 # psycopg2-binary (postgres) and redis are required for internal communication and should not be removed.
@@ -15,6 +15,8 @@ FROM apache/superset:1.4.1
 #     https://github.com/apache/superset/pull/17713
 # - clickhouse-sqlalchemy, where using latest (0.2.0 as of writing) instantly crashes sqlalchemy workers
 #   due to missing sqlalchemy.engine.RowProxy in sqlalchemy 1.4+ (which is what 0.2.0+ is now using)
+# - redis, where using latest (4.2.0 as of writing) instantly crashes superset due to version mismatch
+#   on async-timeout (redis 4.2.0 wants async-timeout 4.x, when superset 1.4.x wants something else)
 RUN pip install \
   clickhouse-driver==0.2.3 \
   clickhouse-sqlalchemy==0.1.8 \
