@@ -169,8 +169,11 @@ spec:
         command:
         - /bin/sh
         - -c
+        # Before starting the server, fix Ctrl+X cut shortcut being broken in SQL Lab.
+        # See also https://github.com/apache/superset/issues/9990
         - |
-          gunicorn \
+          sed -i s/ctrl+x/alt+x/ /app/superset/static/assets/sqllab.*.js \
+          && gunicorn \
               --bind 0.0.0.0:8088 \
               --access-logfile - \
               --error-logfile - \
