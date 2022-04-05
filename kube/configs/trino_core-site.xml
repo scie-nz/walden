@@ -1,12 +1,8 @@
 <configuration>
-  <!-- The below properties enable communication with Minio via s3a://bucketname/... URIs -->
+  <!-- The below properties enable direct communication with Minio via s3a://bucketname/... URIs -->
   <property>
     <name>fs.s3.impl</name>
     <value>org.apache.hadoop.fs.s3native.NativeS3FileSystem</value>
-  </property>
-  <property>
-    <name>fs.s3a.impl</name>
-    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
   </property>
   <property>
     <name>fs.s3.awsAccessKeyId</name>
@@ -17,6 +13,10 @@
     <value>__MINIO_ACCESS_KEY_SECRET</value>
   </property>
   <property>
+    <name>fs.s3a.impl</name>
+    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+  </property>
+  <property>
     <name>fs.s3a.access.key</name>
     <value>__MINIO_ACCESS_KEY_ID</value>
   </property>
@@ -24,24 +24,13 @@
     <name>fs.s3a.secret.key</name>
     <value>__MINIO_ACCESS_KEY_SECRET</value>
   </property>
-  <!-- The below properties enable communication with Alluxio via alluxio://alluxio:19998/... URIs -->
+  <!--
+      The below properties enable cached communication with Alluxio via alluxio://alluxio:19998/... URIs.
+      Additional client perf config is configured at the server then provided to the clients automatically.
+  -->
   <property>
     <name>fs.alluxio.impl</name>
     <value>alluxio.hadoop.FileSystem</value>
-  </property>
-  <property>
-    <name>alluxio.user.file.writetype.default</name>
-    <!--
-        ASYNC_THROUGH allows Alluxio workers to acknowledge writes after they are stored in Alluxio's local
-        in-memory/on-disk cache, but before they are written to the underlying storage, e.g. Minio or NFS.
-
-        This can make writes go much faster, but can create problems if:
-         - Alluxio crashes before the data is flushed
-         - If the underlying storage is accessed directly (as in, via a side channel).
-
-        If either of these is a concern, use CACHE_THROUGH instead.
-    -->
-    <value>ASYNC_THROUGH</value>
   </property>
   <property>
     <name>alluxio.worker.data.server.domain.socket.address</name>

@@ -18,9 +18,9 @@ memory.heap-headroom-per-node=$(echo $CONFIG_MEMORY_HEAP_HEADROOM_PER_NODE)
 # "spill"/swap disk storage for intermediate storage of queries
 spill-enabled=true
 spill-compression-enabled=true
-# Directory where spilled content is written.
-# This is WITHIN the hive/alluxio storage, not local disk
-spiller-spill-path=/trino-spill
+# Directory where any spilled content is written.
+# This is on local disk - we put it in a persistent volume.
+spiller-spill-path=/var/presto/data/spill
 # Max spill space to be used by all queries on a single node.
 max-spill-per-node=$(echo $CONFIG_MAX_SPILL_PER_NODE)
 # Max spill space to be used by a single query on a single node.
