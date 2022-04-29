@@ -17,7 +17,7 @@ image:
   # See walden/docker/* for image definitions.
   devserver: docker.io/scienz/walden-devserver:2022.02.25
   metastore: docker.io/scienz/walden-metastore:2022.03.11
-  superset: docker.io/scienz/walden-superset:2022.03.30b
+  superset: docker.io/scienz/walden-superset:2022.04.30b
   trino: docker.io/scienz/walden-trino:2022.03.11
 
 alluxio:

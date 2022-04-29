@@ -12,6 +12,8 @@ data:
 {{ .Files.Get "configs/superset_datasources.yaml" | indent 4 }}
   superset_init.sh: |
 {{ .Files.Get "configs/superset_init.sh" | indent 4 }}
+  superset_copy_configs.sh: |
+{{ .Files.Get "configs/superset_copy_configs.sh" | indent 4 }}
 ---
 apiVersion: v1
 kind: Service
@@ -61,6 +63,25 @@ spec:
 {{ toYaml .Values.node.toleration.superset_worker | indent 8 }}
 {{- end }}
       initContainers:
+
+      - name: init-config
+        image: {{ .Values.image.busybox }}
+        command:
+        - /bin/sh
+        - /walden/superset_copy_configs.sh
+        volumeMounts:
+        - name: config
+          mountPath: /out
+        - name: config-walden
+          mountPath: /walden
+          readOnly: true
+        - name: config-custom
+          mountPath: /custom
+          readOnly: true
+        - name: secrets-custom
+          mountPath: /secrets
+          readOnly: true
+
       - name: wait-for-postgres
         image: {{ .Values.image.busybox }}
         command:
@@ -72,7 +93,9 @@ spec:
           value: superset-postgres
         - name: POSTGRES_PORT
           value: "5432"
+
       containers:
+
       - name: superset
         image: {{ .Values.image.superset }}
         command:
@@ -112,12 +135,22 @@ spec:
             memory: {{ .Values.superset.mem_limit_worker }}
         volumeMounts:
         - name: config
-          mountPath: "/app/pythonpath"
+          mountPath: /app/pythonpath
           readOnly: true
       volumes:
       - name: config
+        emptyDir: {}
+      - name: config-walden
         configMap:
           name: superset
+      - name: config-custom
+        configMap:
+          name: superset-custom
+          optional: true
+      - name: secrets-custom
+        secret:
+          secretName: superset-custom
+          optional: true
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -147,6 +180,24 @@ spec:
 {{ toYaml .Values.node.toleration.superset | indent 8 }}
 {{- end }}
       initContainers:
+
+      - name: init-config
+        image: {{ .Values.image.busybox }}
+        command:
+        - /bin/sh
+        - /walden/superset_copy_configs.sh
+        volumeMounts:
+        - name: config
+          mountPath: /out
+        - name: config-walden
+          mountPath: /walden
+          readOnly: true
+        - name: config-custom
+          mountPath: /custom
+          readOnly: true
+        - name: secrets-custom
+          mountPath: /secrets
+          readOnly: true
 
       - name: wait-for-postgres
         image: {{ .Values.image.busybox }}
@@ -216,7 +267,7 @@ spec:
             memory: {{ .Values.superset.mem_limit_server }}
         volumeMounts:
         - name: config
-          mountPath: "/app/pythonpath"
+          mountPath: /app/pythonpath
           readOnly: true
         ports:
         - name: http
@@ -287,5 +338,15 @@ spec:
 
       volumes:
       - name: config
+        emptyDir: {}
+      - name: config-walden
         configMap:
           name: superset
+      - name: config-custom
+        configMap:
+          name: superset-custom
+          optional: true
+      - name: secrets-custom
+        secret:
+          secretName: superset-custom
+          optional: true

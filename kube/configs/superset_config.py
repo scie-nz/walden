@@ -44,3 +44,7 @@ RESULTS_BACKEND = RedisCache(
     db=env('REDIS_CELERY_DB', 0),
     key_prefix='superset_results'
 )
+
+####
+# User superset_config.py (from 'superset-custom' ConfigMap) begins here
+####

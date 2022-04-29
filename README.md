@@ -397,15 +397,65 @@ Check the [Trino](https://trino.io/docs/current/connector.html) and [Superset](h
 
 ![Screenshot of Superset UI showing external PostGIS data via Trino](superset-external.png)
 
-### Adding external data sources via Superset
+### Adding external data sources (and other CLI configuration) to Superset
 
-Instead of connecting an external database via Trino and then adding the Trino schema to Superset, the external database may instead be connected to Superset directly.
-
-This means the data will only be accessible via the Superset UI, and will not be accessible via Trino. But this may be preferable in cases like [Geometry columns](https://github.com/trinodb/trino/issues/5580) where the data may be hidden due to not being supported by Trino. Connecting these sources directly to Superset avoids this problem.
+Instead of connecting an external database via Trino, the external database may instead be connected to Superset directly. This means the data will only be accessible via the Superset UI, and will not be accessible via Trino.
 
 Follow the above steps for logging into the Superset UI and adding a new Database entry, except this time you should pick the type of database that you are adding, instead of Trino. The steps are otherwise similar. If your datatype isn't listed, you may need to build a custom `walden-superset` Docker image that installs the required python module(s).
 
 Check the [Superset docs](https://superset.apache.org/docs/connecting-to-databases/installing-database-drivers) for any additional information on configuring particular database types.
+
+If you wish to provide the additional datasources declaratively via a YAML file, you can do so with something like the following custom `ConfigMap`. The special `superset_init_custom.sh` script allows running your own custom CLI commands on Superset startup. The `superset-custom` `ConfigMap` will take effect after restarting the `superset` and `superset-worker` pods:
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: superset-custom
+  namespace: walden
+data:
+  superset_init_custom.sh: |
+    superset import_datasources -p /app/pythonpath/superset_datasources_custom.yaml
+  superset_datasources_custom.yaml: |
+    databases:
+    - name: my_database
+      ...config here...
+```
+
+### Adding/overriding superset_config.py configuration
+
+The provided `superset_config.py` provides a reasonable base configuration for integrating with Walden, using Postgres as the metastore and Redis as the cache.
+
+You may want to customize this configuration, for example to configure a custom authentication provider. To do this, create your own `ConfigMap` named `superset-custom` which contains your own `superset_config.py`, and/or any other files that should be included in the same directory as `superset_config.py`. The content of your custom `superset_config.py` will be concatenated to the end of the [default Walden `superset_config.py`](kube/configs/superset_config.py), and any additional files you provide will be copied into the same directory.
+
+Here is a minimal example of configuring custom additions to `superset_config.py`, which will take effect after restarting the `superset` and `superset-worker` pods. This can be combined with the above example of running custom superset CLI commands on pod startup:
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: superset-custom
+  namespace: walden
+data:
+  superset_config.py: |
+    print("hello world! this is a custom config")
+  custom_sso_security_manager.py: |
+    # for example, this could have your custom SupersetSecurityManager implementation
+    # see docs: https://superset.apache.org/docs/installation/configuring-superset/#custom-oauth2-configuration
+```
+
+Similarly, if you need to provide some credentials for your config, they can be specified in a separate `Secret` that's also named `superset-custom`:
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: superset-custom
+  namespace: walden
+stringData:
+  oauth_secrets.json: |
+    { ... secret keys here ... }
+```
 
 ### Building images using Kaniko
 
