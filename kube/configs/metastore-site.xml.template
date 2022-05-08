@@ -35,36 +35,22 @@
         <name>javax.jdo.option.ConnectionPassword</name>
         <value>$POSTGRES_PASSWORD</value>
     </property>
+    <!--
+      Without this, metastore will try to talk to actual AWS when creating schemas in s3a:// locations.
+      We also provide required AWS_* credential envvars.
+    -->
     <property>
-        <name>fs.s3.awsAccessKeyId</name>
-        <value>$MINIO_ACCESS_KEY_ID</value>
+        <name>fs.s3a.endpoint</name>
+        <value>minio:9000</value>
     </property>
-    <property>
-        <name>fs.s3.awsSecretAccessKey</name>
-        <value>$MINIO_ACCESS_KEY_SECRET</value>
-    </property>
-    <property>
-        <name>fs.s3a.access.key</name>
-        <value>$MINIO_ACCESS_KEY_ID</value>
-    </property>
-    <property>
-        <name>fs.s3a.secret.key</name>
-        <value>$MINIO_ACCESS_KEY_SECRET</value>
-    </property>
+    <!-- Without this, metastore will time out when creating tables. -->
     <property>
         <name>fs.s3a.connection.ssl.enabled</name>
         <value>false</value>
     </property>
+    <!-- Needed for minio (and other onprem S3): avoid mangling hostnames, which also causes timeouts. See HADOOP-12963 -->
     <property>
         <name>fs.s3a.path.style.access</name>
         <value>true</value>
-    </property>
-    <property>
-        <name>fs.s3a.impl</name>
-        <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
-    </property>
-    <property>
-        <name>fs.s3a.endpoint</name>
-        <value>minio:9000</value>
     </property>
 </configuration>

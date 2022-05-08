@@ -5,23 +5,29 @@ metadata:
   name: trino-catalog
   namespace: walden
 data:
-  # Configure Trino to write Hive data via MinIO
+  # Configure 'hive' catalog that can be used for writing data in preinstalled MinIO and/or Alluxio
+  # This is the "built-in" storage in Walden. Other supported types can be added by defining custom catalogs.
   core-site.xml: |
-{{ .Files.Get "configs/trino_core-site.xml" | indent 4 }}
-  hive.properties: |
-{{ .Files.Get "configs/trino_hive.properties" | indent 4 }}
-  alluxio.properties: |
-{{ .Files.Get "configs/trino_alluxio.properties" | indent 4 }}
+{{ .Files.Get "configs/trinocatalog_core-site.xml" | indent 4 }}
+  hive.properties.template: |
+{{ .Files.Get "configs/trinocatalog_hive.properties.template" | indent 4 }}
 
   # Enable TPCH benchmark schemas
   # See: https://trino.io/docs/current/connector/tpch.html
   tpch.properties: |
     connector.name=tpch
 
-{{- if .Values.trino.catalog_custom }}
-  # Custom user catalog entry
-  custom.properties: |
-{{ .Values.trino.catalog_custom | indent 4 }}
+  # Enable JMX metrics schemas
+  # See: https://trino.io/docs/current/connector/jmx.html
+  jmx.properties: |
+    connector.name=jmx
+
+  # Any custom user catalog(s) for connecting to other data sources (e.g. cloud host object store).
+  # Hive catalogs may require running multiple per-catalog Metastores.
+  # User catalogs may use shell templating, see ../configs/*.template for examples.
+{{- range $name, $props := .Values.trino.custom_catalogs }}
+  {{ $name }}.properties.template: |
+{{ $props | indent 4 }}
 {{- end }}
 ---
 apiVersion: v1

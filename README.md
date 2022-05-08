@@ -160,9 +160,11 @@ devserver# mc ls walden-minio/direct
 
 #### Connect Trino to MinIO via Alluxio
 
-Walden comes packaged with Alluxio, which provides several benefits for processing data across a variety of backend storage systems. Alluxio can be used to support other storage types that are not natively supported by Trino, such as external NFS servers, while also providing a caching layer in front of that underlying storage.
+Walden comes optionally packaged with Alluxio, which provides several benefits for processing data across a variety of backend storage systems. Alluxio can be used to support other storage types that are not natively supported by Trino, such as external NFS servers, while also providing a caching layer in front of that underlying storage. However, if you are not using these additional features, you can also leave Alluxio turned off (default), and instead use Trino's own built-in Hive caching.
 
-In this case we will point Alluxio to a bucket named `alluxio` that we will create in the included MinIO instance.
+To enable Alluxio, edit your `values.yaml` to set `alluxio.enabled: true` before deploying Walden into your cluster.
+
+For testing Alluxio, we will use a separate bucket named `alluxio` that we will create in the included MinIO instance.
 
 In the `devserver` pod, we create a new `alluxio` bucket using the MinIO CLI. Then we start a new Trino session and create an `alluxio` schema that points to the `alluxio` service:
 ```
@@ -355,7 +357,7 @@ External databases can be added to Walden by [connecting them to Trino](https://
 
 This strategy allows using both Trino and Superset to interact with the external data. However, some data types (such as GIS geometry columns) may not work well with Trino. In those cases you can instead connect Superset to the external database directly as described in the next section below.
 
-1. Uncomment and edit the `catalog_custom` setting in your `values.yaml`, then apply the changes with `deploy.sh`. This block should have the content of a `.properties` file for [the Trino connector you want](https://trino.io/docs/current/connector.html). The resulting "Catalog" name will be `custom`.
+1. Uncomment and edit the `custom_catalogs` setting in your `values.yaml`, then apply the changes with `deploy.sh`. This block should have the content of a `.properties` file for [the Trino connector(s) you want](https://trino.io/docs/current/connector.html). The resulting Trino Catalog name will be the key of the entry in the map.
 2. After running `deploy.sh`, restart the `trino-*` pods manually for the change to take effect.
     ```
     $ kubectl delete pod -n walden trino-coordinator-xxxx-yyyy trino-worker-xxxx-yyyy

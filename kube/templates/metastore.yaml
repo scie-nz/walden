@@ -86,12 +86,13 @@ spec:
               key: pass
         - name: METASTORE_DB
           value: metastore
-        - name: MINIO_ACCESS_KEY_ID
+        # Provide credentials for metastore to access minio directly when creating tables.
+        - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
               name: minio-root
               key: user
-        - name: MINIO_ACCESS_KEY_SECRET
+        - name: AWS_SECRET_KEY
           valueFrom:
             secretKeyRef:
               name: minio-root

@@ -4,4 +4,4 @@
 TAG=${WALDEN_TRINO_TAG:=${WALDEN_TAG:=$(date +%Y.%m.%d)}}
 
 # Allow custom registry/org via WALDEN_ORG
-docker push ${WALDEN_ORG:=docker.io/scienz}/walden-trino:$TAG
+docker push ${WALDEN_ORG:=docker.io/scienz}/walden-trino:${TAG}b

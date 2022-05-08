@@ -1,3 +1,4 @@
+{{- if .Values.alluxio.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -214,3 +215,4 @@ spec:
       resources:
         requests:
           storage: 1Gi
+{{- end }} # end of large alluxio.enabled block

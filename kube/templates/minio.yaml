@@ -97,18 +97,23 @@ spec:
         - name: MINIO_MAX_HOSTNUM
           # For N pods, we want '0...N-1' to match pod hostnames, see below.
           value: "{{ sub .Values.minio.replicas 1 }}"
+        - name: MINIO_UPDATE
+          # Disable phoning home
+          value: "off"
         command:
         - /bin/bash
         - -c
         # Must provide each pod with the total replica count.
         # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
-        - 'minio server http://minio-{0...${MINIO_MAX_HOSTNUM}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
+        - 'minio server --console-address :8080 http://minio-{0...${MINIO_MAX_HOSTNUM}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
         resources:
           limits:
             memory: {{ .Values.minio.mem_limit }}
         ports:
         - name: s3
           containerPort: 9000
+        - name: console
+          containerPort: 8080
         volumeMounts:
         - name: storage
           mountPath: /data

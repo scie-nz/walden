@@ -1,3 +1,4 @@
+{{- if .Values.alluxio.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,3 +29,4 @@ data:
   ALLUXIO_FUSE_JAVA_OPTS: -Dalluxio.user.hostname=${ALLUXIO_CLIENT_HOSTNAME} -XX:MaxDirectMemorySize=2g
   ALLUXIO_WORKER_TIEREDSTORE_LEVEL0_DIRS_PATH: /dev/shm
   ALLUXIO_WORKER_TIEREDSTORE_LEVEL1_DIRS_PATH: /mnt/cache
+{{- end }} # end of large alluxio.enabled block

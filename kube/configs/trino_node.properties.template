@@ -4,4 +4,4 @@ node.environment=production
 # This apparently confuses Trino's job scheduling where it tries to use the old IP even though it's
 # not listed in SELECT * FROM system.runtime.nodes anymore
 node.id=${HOSTNAME}_$(uuidgen --random | sed s/-.*//g)
-node.data-dir=/var/presto/data
+node.data-dir=/data

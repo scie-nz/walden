@@ -1,7 +1,7 @@
 # Use whatever is the latest JRE 11.0.x version
 # -> https://hub.docker.com/r/azul/zulu-openjdk/tags?page=1&name=11
 # Trino requires JRE 11, minimum 11.0.11 - newer versions are not tested
-FROM azul/zulu-openjdk:11.0.14.1
+FROM azul/zulu-openjdk:11.0.15
 
 ENV DEBIAN_FRONTEND="noninteractive" \
   MVN_MIRROR="https://repo1.maven.org/maven2/"

@@ -1,0 +1,18 @@
+<configuration>
+  <!--
+      The below properties enable cached communication with Alluxio via alluxio://alluxio:19998/... URIs.
+      Additional client perf config is configured at the server then provided to the clients automatically.
+  -->
+  <property>
+    <name>fs.alluxio.impl</name>
+    <value>alluxio.hadoop.FileSystem</value>
+  </property>
+  <property>
+    <name>alluxio.worker.data.server.domain.socket.address</name>
+    <value>/opt/domain</value>
+  </property>
+  <property>
+    <name>alluxio.worker.data.server.domain.socket.as.uuid</name>
+    <value>true</value>
+  </property>
+</configuration>

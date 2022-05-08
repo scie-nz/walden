@@ -8,7 +8,7 @@ image:
   alluxio: docker.io/alluxio/alluxio:2.7.3
   # Utility image for initContainers: config templating, waiting for dependencies to start.
   busybox: docker.io/library/busybox:latest
-  minio: docker.io/minio/minio:RELEASE.2022-02-05T04-40-59Z
+  minio: docker.io/minio/minio:RELEASE.2022-05-04T07-45-27Z
   # Changes to the Postgres major version require manually upgrading the on-disk data.
   postgres: docker.io/library/postgres:14.1
   redis: docker.io/library/redis:6.2.6-buster
@@ -18,9 +18,13 @@ image:
   devserver: docker.io/scienz/walden-devserver:2022.02.25
   metastore: docker.io/scienz/walden-metastore:2022.03.11
   superset: docker.io/scienz/walden-superset:2022.04.30b
-  trino: docker.io/scienz/walden-trino:2022.05.08
+  trino: docker.io/scienz/walden-trino:2022.05.08b
 
 alluxio:
+  # Enables Alluxio for additional managed data sources, along with caching of those sources.
+  # By default, Trino's Hive cache is often sufficient, but enabling Alluxio may be useful for
+  # supporting additional networked volume types that are not natively supported with Trino/Hive.
+  enabled: false
   # The root mount to be accessed by Alluxio.
   # By default this is a Minio bucket named "alluxio".
   # The "alluxio" bucket must be created in Minio manually - see walden README for example.
@@ -32,11 +36,10 @@ alluxio:
   # This is allocated on startup, and is "used" even if the workers are idle.
   # Note that Alluxio workers are colocated with Trino workers, so the sum total of
   # alluxio.mem_cache and trino.mem_limit_worker must stay below total node memory.
-  mem_cache: 1G # suffix must be "M" or "G"
-  # The amount of local storage to use for cache in each Alluxio/Trino worker.
-  # This can greatly speed up repeat access to remote network data via Alluxio.
-  # This is mounted as a persistent volume on startup.
-  disk_cache: 10G # suffix must be "M" or "G"
+  mem_cache: 1G
+  # RAM storage for cache in each Alluxio/Trino worker.
+  # This can greatly speed up repeat access to data via Alluxio.
+  disk_cache: 10G
   # Enabling an NFS volume mount (at /mnt/nfs) in the Alluxio pods.
   # You can add the volume to Alluxio by either assigning root_mount above to /mnt/nfs,
   # or via the alluxio CLI 'mount' command.
@@ -66,8 +69,8 @@ superset:
   worker_replicas: 1
   # The memory limits for each of the Superset pods
   # We start with very low values, increase to fit your system and workloads.
-  mem_limit_server: 1Gi
-  mem_limit_worker: 1Gi
+  mem_limit_server: 512M
+  mem_limit_worker: 1G
   # An external IP for the Superset service
   external_ip: ""
 
@@ -76,14 +79,19 @@ trino:
   worker_replicas: 1
   # The memory limits for each of the Trino pods
   # We start with very low values, increase to fit your system and workloads.
-  mem_limit_coordinator: 2Gi
+  mem_limit_coordinator: 2G
   # Note that Alluxio workers are colocated with Trino workers, so the sum total of
   # alluxio.mem_cache and trino.mem_limit_worker must stay below total node memory.
-  mem_limit_worker: 2Gi
+  mem_limit_worker: 2G
   # The value of "-Xmx" provided to the JVM
   mem_jvm_heap: 1536M
   # Disk storage for "spill" storage as configured below
-  disk_worker: 25Gi
+  disk_worker: 25G
+  # Disk storage for cache used for Hive catalogs in each Trino worker.
+  # This can greatly speed up repeat access to remote network volumes.
+  disk_cache: 10G
+  # RAM storage for cache used for Hive catalogs in each Trino worker.
+  mem_cache: 1G
   # An external IP for the Trino service
   external_ip: ""
 
@@ -101,13 +109,39 @@ trino:
     max_spill_per_node: 25GB
     query_max_spill_per_node: 10GB
 
-  # Custom external data source to include in Trino connectors
+  # Custom Trino connectors/catalogs to add to the built-in ones.
+  # This allows adding external data sources on top of the default Hive+Minio storage provided by Walden.
+  # Each entry has a name key and a properties file value, where the file content supports shell templating.
   # See also: https://trino.io/docs/current/connector.html
-  #catalog_custom: |
-  #  connector.name=postgresql
-  #  connection-url=jdbc:postgresql://example.com:5432/dbname
-  #  connection-user=postgresUserHere
-  #  connection-password=postgresPasswordHere
+  #custom_catalogs:
+  #  postgres: |
+  #    connector.name=postgresql
+  #    connection-url=jdbc:postgresql://example.com:5432/dbname
+  #    connection-user=$(echo $POSTGRES_USER)
+  #    connection-password=$(echo $POSTGRES_PASSWORD)
+
+  # Custom environment variables to include in the trino coordinator and workers.
+  # This is primarily for passing credentials into templated catalog properties configs.
+  #custom_env:
+  #- name: POSTGRES_USER
+  #  valueFrom:
+  #    secretKeyRef:
+  #      name: postgres-user
+  #      value: user
+  #- name: POSTGRES_PASSWORD
+  #  valueFrom:
+  #    secretKeyRef:
+  #      name: postgres-user
+  #      value: pass
+
+  # Custom port definitions to include in the trino coordinator and workers.
+  # This is primarily for enabling Hive storage caching across multiple instances,
+  # where each Hive instance's cache requires its own dedicated ports for cache communication.
+  #custom_ports:
+  #- name: hivecache2-data
+  #  containerPort: 8896
+  #- name: hivecache2-bk
+  #  containerPort: 8897
 
 # Optional configuration of nodeSelectors/tolerations for Walden components.
 # For example, superset/trino workers could be allocated to tainted machines with dedicated resources.

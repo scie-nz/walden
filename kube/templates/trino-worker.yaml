@@ -33,38 +33,8 @@ spec:
 {{ toYaml .Values.node.toleration.trino_worker | indent 8 }}
 {{- end }}
       terminationGracePeriodSeconds: 10
+{{- if .Values.alluxio.enabled }}
       initContainers:
-
-      - name: copy-configs
-        image: {{ .Values.image.busybox }}
-        command:
-        - sh
-        - -c
-        - |
-          cp -v /conf/* /etc-out/ &&
-          mkdir -p /etc-out/catalog &&
-          cp -v /catalog/* /etc-out/catalog &&
-          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /etc-out/catalog/* &&
-          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /etc-out/catalog/*
-        env:
-        - name: MINIO_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: minio-root
-              key: user
-        - name: MINIO_ACCESS_KEY_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: minio-root
-              key: pass
-        volumeMounts:
-        - name: trino-config
-          mountPath: /conf
-        - name: trino-catalog
-          mountPath: /catalog
-        - name: trino-etc
-          mountPath: /etc-out
-
       - name: wait-for-alluxio
         image: {{ .Values.image.busybox }}
         command:
@@ -76,16 +46,39 @@ spec:
           value: alluxio
         - name: ALLUXIO_LEADER_PORT
           value: "19999"
+{{- end }}
 
       containers:
 
       - name: trino-worker
         image: {{ .Values.image.trino }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          mkdir -p /diskcache/hive /memcache/hive &&
+{{- range $name, $props := .Values.trino.custom_catalogs }}
+          mkdir -p /diskcache/{{ $name }} /memcache/{{ $name }} &&
+{{- end }}
+          mkdir -p /trino-server/etc/catalog &&
+          cp -v /tmp/roconf/* /trino-server/etc &&
+          cp -v /tmp/rocatalog/* /trino-server/etc/catalog &&
+          /entrypoint.sh
         env:
         - name: HIVE_METASTORE_HOST
           value: metastore
         - name: HIVE_METASTORE_PORT
           value: "9083"
+        - name: MINIO_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: minio-root
+              key: user
+        - name: MINIO_ACCESS_KEY_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: minio-root
+              key: pass
         - name: CONFIG_JVM_HEAP
           value: "{{ .Values.trino.mem_jvm_heap }}"
         - name: CONFIG_QUERY_MAX_MEMORY_PER_NODE
@@ -98,17 +91,38 @@ spec:
           value: "{{ .Values.trino.config.max_spill_per_node }}"
         - name: CONFIG_QUERY_MAX_SPILL_PER_NODE
           value: "{{ .Values.trino.config.query_max_spill_per_node }}"
+        # Custom envvars for e.g. templated credentials in custom connector configs
+        {{- range .Values.trino.custom_env }}
+        - {{ . }}
+        {{- end }}
         resources:
           limits:
-            memory: {{ .Values.trino.mem_limit_worker }}
+            memory: {{ .Values.trino.mem_limit_worker }}i # "nG" => "nGi"
         ports:
         - name: http
           containerPort: 80
+        - name: hivecache-data
+          containerPort: 8898
+        - name: hivecache-bk
+          containerPort: 8899
+        # Custom ports for e.g. exposing additional hive caches
+        {{- range .Values.trino.custom_ports }}
+        - {{ . }}
+        {{- end }}
         volumeMounts:
+        - name: trino-config
+          mountPath: /tmp/roconf
+        - name: trino-catalog
+          mountPath: /tmp/rocatalog
         - name: trino-etc
           mountPath: /trino-server/etc
+        - name: trino-memcache
+          mountPath: /memcache
+        - name: trino-cache
+          mountPath: /diskcache
         - name: storage
-          mountPath: /var/presto/data
+          mountPath: /data
+{{- if .Values.alluxio.enabled }}
         - name: alluxio-domain
           mountPath: /opt/domain
 
@@ -171,7 +185,7 @@ spec:
           mountPath: /opt/domain
         - name: alluxio-memcache
           mountPath: /dev/shm
-        - name: diskcache
+        - name: alluxio-cache
           mountPath: /mnt/cache
 {{- if and .Values.alluxio.nfs_server .Values.alluxio.nfs_path }}
         - name: nfs-data
@@ -238,12 +252,13 @@ spec:
           mountPath: /opt/domain
         - name: alluxio-memcache
           mountPath: /dev/shm
-        - name: diskcache
+        - name: alluxio-cache
           mountPath: /mnt/cache
 {{- if and .Values.alluxio.nfs_server .Values.alluxio.nfs_path }}
         - name: nfs-data
           mountPath: /mnt/nfs
 {{- end }}
+{{- end }} # alluxio.enabled
 
       volumes:
       - name: trino-config
@@ -254,6 +269,11 @@ spec:
           name: trino-catalog
       - name: trino-etc
         emptyDir: {}
+      - name: trino-memcache
+        emptyDir:
+          medium: "Memory"
+          sizeLimit: {{ .Values.trino.mem_cache }}i # "nG" => "nGi"
+{{- if .Values.alluxio.enabled }}
       - name: alluxio-domain
         emptyDir: {}
       - name: alluxio-memcache
@@ -266,9 +286,9 @@ spec:
           server: {{ .Values.alluxio.nfs_server }}
           path: {{ .Values.alluxio.nfs_path }}
 {{- end }}
+{{- end }}
 
   volumeClaimTemplates:
-
   - metadata:
       name: storage
     spec:
@@ -276,12 +296,22 @@ spec:
       - ReadWriteOnce
       resources:
         requests:
-          storage: {{ .Values.trino.disk_worker }}
+          storage: {{ .Values.trino.disk_worker }}i # "nG" => "nGi"
   - metadata:
-      name: diskcache
+      name: trino-cache
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.trino.disk_cache }}i # "nG" => "nGi"
+{{- if .Values.alluxio.enabled }}
+  - metadata:
+      name: alluxio-cache
     spec:
       accessModes:
       - ReadWriteOnce
       resources:
         requests:
           storage: {{ .Values.alluxio.disk_cache }}i # "nG" => "nGi"
+{{- end }}

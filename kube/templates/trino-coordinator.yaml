@@ -14,6 +14,18 @@ spec:
   - name: http
     port: 80
     targetPort: http
+  - name: hivecache-data
+    port: 8898
+    targetPort: hivecache-data
+  - name: hivecache-bk
+    port: 8899
+    targetPort: hivecache-bk
+  # Custom ports for e.g. exposing additional hive caches
+  {{- range $name, $port := .Values.trino.custom_ports }}
+  - name: {{ $name }}
+    port: {{ $port }}
+    targetPort: {{ $name }}
+  {{- end }}
   selector:
     app: trino-coordinator
 ---
@@ -43,23 +55,25 @@ spec:
       tolerations:
 {{ toYaml .Values.node.toleration.trino_coordinator | indent 8 }}
 {{- end }}
-      initContainers:
-      - name: copy-configs
-        # Use walden-trino image, rather than busybox, to have access to htpasswd command
+      containers:
+      - name: trino-coordinator
         image: {{ .Values.image.trino }}
         command:
-        - /bin/sh
+        - /bin/bash
         - -c
         # Note: We currently generate a credentials file as an example.
         #       Trino requires that SSL be enabled before credentials can be used.
         - |
-          cp -v /conf/* /etc-out/ &&
-          mkdir -p /etc-out/catalog &&
-          cp -v /catalog/* /etc-out/catalog &&
-          sed -i "s/__MINIO_ACCESS_KEY_ID/$MINIO_ACCESS_KEY_ID/g" /etc-out/catalog/* &&
-          sed -i "s/__MINIO_ACCESS_KEY_SECRET/$MINIO_ACCESS_KEY_SECRET/g" /etc-out/catalog/* &&
-          htpasswd -c -b -B -C 10 /etc-out/password.db "$TRINO_USER" "$TRINO_PASSWORD"
+          mkdir -p /trino-server/etc/catalog &&
+          cp -v /tmp/roconf/* /trino-server/etc &&
+          cp -v /tmp/rocatalog/* /trino-server/etc/catalog &&
+          htpasswd -c -b -B -C 10 /trino-server/etc/password.db "$TRINO_USER" "$TRINO_PASSWORD"
+          /entrypoint.sh
         env:
+        - name: HIVE_METASTORE_HOST
+          value: metastore
+        - name: HIVE_METASTORE_PORT
+          value: "9083"
         - name: MINIO_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
@@ -80,21 +94,6 @@ spec:
             secretKeyRef:
               name: trino-admin
               key: pass
-        volumeMounts:
-        - name: config
-          mountPath: /conf
-        - name: catalog
-          mountPath: /catalog
-        - name: etc
-          mountPath: /etc-out
-      containers:
-      - name: trino-coordinator
-        image: {{ .Values.image.trino }}
-        env:
-        - name: HIVE_METASTORE_HOST
-          value: metastore
-        - name: HIVE_METASTORE_PORT
-          value: "9083"
         - name: CONFIG_JVM_HEAP
           value: "{{ .Values.trino.mem_jvm_heap }}"
         - name: CONFIG_QUERY_MAX_MEMORY_PER_NODE
@@ -107,13 +106,30 @@ spec:
           value: "{{ .Values.trino.config.max_spill_per_node }}"
         - name: CONFIG_QUERY_MAX_SPILL_PER_NODE
           value: "{{ .Values.trino.config.query_max_spill_per_node }}"
+        # Custom envvars for e.g. templated credentials in custom connector configs
+        {{- range .Values.trino.custom_env }}
+        - {{ . }}
+        {{- end }}
         resources:
           limits:
-            memory: {{ .Values.trino.mem_limit_coordinator }}
+            memory: {{ .Values.trino.mem_limit_coordinator }}i # "nG" => "nGi"
         ports:
         - name: http
           containerPort: 80
+        - name: hivecache-data
+          containerPort: 8898
+        - name: hivecache-bk
+          containerPort: 8899
+        # Custom ports for e.g. exposing additional hive caches
+        {{- range $name, $port := .Values.trino.custom_ports }}
+        - name: {{ $name }}
+          containerPort: {{ $port }}
+        {{- end }}
         volumeMounts:
+        - name: config
+          mountPath: /tmp/roconf
+        - name: catalog
+          mountPath: /tmp/rocatalog
         - name: etc
           mountPath: /trino-server/etc
       volumes:
