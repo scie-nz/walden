@@ -22,7 +22,7 @@ RUN apt-get update --fix-missing \
 # Install Trino to /trino-server as a separate stage at the end.
 # Maximizes caching when switching versions.
 # Note that Trino already includes alluxio-shaded-client-<version>.jar
-ENV TRINO_VERSION=373
+ENV TRINO_VERSION=380
 
 RUN curl https://repo1.maven.org/maven2/io/trino/trino-server/${TRINO_VERSION}/trino-server-${TRINO_VERSION}.tar.gz | tar xzf - \
   && mv -v trino-server-${TRINO_VERSION} trino-server \
