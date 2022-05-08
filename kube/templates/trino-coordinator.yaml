@@ -23,7 +23,7 @@ spec:
   # Custom ports for e.g. exposing additional hive caches
   {{- range $name, $port := .Values.trino.custom_ports }}
   - name: {{ $name }}
-    port: {{ $port }}
+    port: {{ $port | int }}
     targetPort: {{ $name }}
   {{- end }}
   selector:
@@ -108,7 +108,7 @@ spec:
           value: "{{ .Values.trino.config.query_max_spill_per_node }}"
         # Custom envvars for e.g. templated credentials in custom connector configs
         {{- range .Values.trino.custom_env }}
-        - {{ . }}
+        - {{ . | toJson }}
         {{- end }}
         resources:
           limits:

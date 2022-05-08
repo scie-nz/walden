@@ -93,7 +93,7 @@ spec:
           value: "{{ .Values.trino.config.query_max_spill_per_node }}"
         # Custom envvars for e.g. templated credentials in custom connector configs
         {{- range .Values.trino.custom_env }}
-        - {{ . }}
+        - {{ . | toJson }}
         {{- end }}
         resources:
           limits:
@@ -106,8 +106,9 @@ spec:
         - name: hivecache-bk
           containerPort: 8899
         # Custom ports for e.g. exposing additional hive caches
-        {{- range .Values.trino.custom_ports }}
-        - {{ . }}
+        {{- range $name, $port := .Values.trino.custom_ports }}
+        - name: {{ $name }}
+          containerPort: {{ $port }}
         {{- end }}
         volumeMounts:
         - name: trino-config

@@ -158,7 +158,7 @@ devserver# mc ls walden-minio/direct
 <empty>
 ```
 
-#### Connect Trino to MinIO via Alluxio
+#### Connect Trino to MinIO via Alluxio (optional)
 
 Walden comes optionally packaged with Alluxio, which provides several benefits for processing data across a variety of backend storage systems. Alluxio can be used to support other storage types that are not natively supported by Trino, such as external NFS servers, while also providing a caching layer in front of that underlying storage. However, if you are not using these additional features, you can also leave Alluxio turned off (default), and instead use Trino's own built-in Hive caching.
 

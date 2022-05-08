@@ -127,21 +127,19 @@ trino:
   #  valueFrom:
   #    secretKeyRef:
   #      name: postgres-user
-  #      value: user
+  #      key: user
   #- name: POSTGRES_PASSWORD
   #  valueFrom:
   #    secretKeyRef:
   #      name: postgres-user
-  #      value: pass
+  #      key: pass
 
   # Custom port definitions to include in the trino coordinator and workers.
   # This is primarily for enabling Hive storage caching across multiple instances,
   # where each Hive instance's cache requires its own dedicated ports for cache communication.
   #custom_ports:
-  #- name: hivecache2-data
-  #  containerPort: 8896
-  #- name: hivecache2-bk
-  #  containerPort: 8897
+  #  hivecache2-data: 8896
+  #  hivecache2-bk: 8897
 
 # Optional configuration of nodeSelectors/tolerations for Walden components.
 # For example, superset/trino workers could be allocated to tainted machines with dedicated resources.

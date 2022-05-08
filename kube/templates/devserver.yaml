@@ -32,34 +32,38 @@ spec:
           mountPath: /root
         resources:
           requests:
-            memory: "2048Mi"
+            memory: 2048Mi
           limits:
-            memory: "4096Mi"
+            memory: 4096Mi
         env:
-          - name: HIVE_METASTORE_HOST
-            value: metastore
-          - name: HIVE_METASTORE_PORT
-            value: "9083"
-          - name: MINIO_ACCESS_KEY_ID
-            valueFrom:
-              secretKeyRef:
-                name: minio-root
-                key: user
-          - name: MINIO_ACCESS_KEY_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: minio-root
-                key: pass
-          - name: TRINO_USER
-            valueFrom:
-              secretKeyRef:
-                name: trino-admin
-                key: user
-          - name: TRINO_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: trino-admin
-                key: pass
+        - name: HIVE_METASTORE_HOST
+          value: metastore
+        - name: HIVE_METASTORE_PORT
+          value: "9083"
+        - name: MINIO_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: minio-root
+              key: user
+        - name: MINIO_ACCESS_KEY_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: minio-root
+              key: pass
+        - name: TRINO_USER
+          valueFrom:
+            secretKeyRef:
+              name: trino-admin
+              key: user
+        - name: TRINO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: trino-admin
+              key: pass
+        # Custom envvars for e.g. templated credentials in custom connector configs
+        {{- range .Values.trino.custom_env }}
+        - {{ . | toJson }}
+        {{- end }}
       volumes:
       - name: devserver-persistent-storage
         persistentVolumeClaim:
