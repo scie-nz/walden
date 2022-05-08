@@ -108,7 +108,7 @@ spec:
         - 'minio server --console-address :8080 http://minio-{0...${MINIO_MAX_HOSTNUM}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
         resources:
           limits:
-            memory: {{ .Values.minio.mem_limit }}
+            memory: {{ .Values.minio.mem_limit }}i # "nG" => "nGi"
         ports:
         - name: s3
           containerPort: 9000

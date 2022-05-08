@@ -56,7 +56,7 @@ minio:
   # The memory limit for each Minio pod.
   # Minio recommends 8GB for pods with up to 1TB storage/pod, or 16GB for up to 10TB storage/pod.
   # We start with very low values, increase to fit your system and workloads.
-  mem_limit: 512Mi
+  mem_limit: 512M
 
 superset:
   # The username/password for logging in to Superset
@@ -75,7 +75,7 @@ superset:
   external_ip: ""
 
 trino:
-  # Number of worker replicas. Each replica also gets an Alluxio worker.
+  # Number of worker replicas. Each replica also gets an Alluxio worker, if Alluxio is enabled.
   worker_replicas: 1
   # The memory limits for each of the Trino pods
   # We start with very low values, increase to fit your system and workloads.
