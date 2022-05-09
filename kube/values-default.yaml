@@ -58,6 +58,24 @@ minio:
   # We start with very low values, increase to fit your system and workloads.
   mem_limit: 512M
 
+  # Custom environment variables to include in the minio nodes.
+  # This may be used for customizing minio configuration, e.g. OIDC authentication.
+  #custom_env:
+  #- name: MINIO_IDENTITY_OPENID_CONFIG_URL
+  #  value: https://auth.example.com/.well-known/openid-configuration
+  #- name: MINIO_IDENTITY_OPENID_CLIENT_ID
+  #  valueFrom:
+  #    secretKeyRef:
+  #      name: minio-oidc-client
+  #      key: id
+  #- name: MINIO_IDENTITY_OPENID_CLIENT_SECRET
+  #  valueFrom:
+  #    secretKeyRef:
+  #      name: minio-oidc-client
+  #      key: secret
+  #- name: MINIO_IDENTITY_OPENID_REDIRECT_URI
+  #  value: https://minio.example.com/oauth_callback
+
 superset:
   # The username/password for logging in to Superset
   # If either is empty, a random value is generated and stored in the "superset-admin" secret

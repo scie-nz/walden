@@ -1,3 +1,4 @@
+
 ---
 apiVersion: v1
 kind: Service
@@ -11,6 +12,9 @@ spec:
   - name: s3
     port: 9000
     targetPort: s3
+  - name: console
+    port: 8080
+    targetPort: console
   selector:
     app: minio
 ---
@@ -79,6 +83,12 @@ spec:
       containers:
       - name: minio
         image: {{ .Values.image.minio }}
+        command:
+        - /bin/bash
+        - -c
+        # Must provide each pod with the total replica count.
+        # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
+        - 'minio server --console-address :8080 http://minio-{0...${MINIO_MAX_HOSTNUM}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
         env:
         - name: MINIO_ROOT_USER
           valueFrom:
@@ -100,12 +110,10 @@ spec:
         - name: MINIO_UPDATE
           # Disable phoning home
           value: "off"
-        command:
-        - /bin/bash
-        - -c
-        # Must provide each pod with the total replica count.
-        # see https://docs.min.io/docs/distributed-minio-quickstart-guide.html
-        - 'minio server --console-address :8080 http://minio-{0...${MINIO_MAX_HOSTNUM}}.minio-headless.${NAMESPACE}.svc.cluster.local:9000/data'
+        # Custom envvars for e.g. templated credentials in custom connector configs
+        {{- range .Values.minio.custom_env }}
+        - {{ . | toJson }}
+        {{- end }}
         resources:
           limits:
             memory: {{ .Values.minio.mem_limit }}i # "nG" => "nGi"
