@@ -116,22 +116,22 @@ trino:direct> SHOW SCHEMAS;
 
 Now we can create a table and store some data:
 ```
-trino:direct> CREATE TABLE dim_foo(bar BIGINT);
+trino:direct> CREATE TABLE IF NOT EXISTS dim_foo(key VARCHAR, val BIGINT);
 CREATE TABLE
 
-trino:direct> INSERT INTO dim_foo VALUES 1, 2, 3, 4;
+trino:direct> INSERT INTO dim_foo VALUES ('this', 1), ('is', 2), ('a', 3), ('test', 4);
 INSERT: 4 rows
 ```
 
 Assuming everything is working, you should be able to query the stored values:
 ```
-trino:direct> SELECT bar FROM dim_foo;
- bar
------
-   1
-   2
-   3
-   4
+trino:direct> SELECT key, val FROM dim_foo;
+ key  | val
+------+-----
+ this |   1
+ is   |   2
+ a    |   3
+ test |   4
 (4 rows)
 ```
 
@@ -141,7 +141,7 @@ trino:direct> ^D
 
 devserver# mc ls -r walden-minio/direct
 [2022-03-11 06:22:24 UTC]     0B STANDARD dim_foo/
-[2022-03-11 06:21:42 UTC]   250B STANDARD 20220311_062141_00005_26e8n_9d96d247-6da3-49f9-a537-b0bc897879b9
+[2022-03-11 06:21:42 UTC]   356B STANDARD 20220311_062141_00005_26e8n_9d96d247-6da3-49f9-a537-b0bc897879b9
 ```
 
 We can clean up our test data by deleting the table and then the schema:
@@ -193,22 +193,22 @@ trino:alluxio> SHOW SCHEMAS;
 
 We create a table and store some data:
 ```
-trino:alluxio> CREATE TABLE IF NOT EXISTS dim_bar(baz BIGINT);
+trino:alluxio> CREATE TABLE IF NOT EXISTS dim_bar(key VARCHAR, val BIGINT);
 CREATE TABLE
 
-trino:alluxio> INSERT INTO dim_bar VALUES 4, 5, 6, 7;
+trino:alluxio> INSERT INTO dim_bar VALUES ('this', 4), ('is', 5), ('another', 6), ('test', 7);
 INSERT: 4 rows
 ```
 
 And finally we can fetch the data back:
 ```
-trino:alluxio> SELECT baz FROM dim_bar;
- baz
------
-   4
-   5
-   6
-   7
+trino:alluxio> SELECT key, val FROM dim_bar;
+   key   | val
+---------+-----
+ this    |   4
+ is      |   5
+ another |   6
+ test    |   7
 (4 rows)
 ```
 
@@ -216,7 +216,7 @@ Now we can press `Ctrl+D` to exit the Trino session, then use the MinIO CLI to c
 ```
 devserver # mc ls -r walden-minio/alluxio
 [2022-03-11 07:17:16 UTC]     0B STANDARD dim_bar/
-[2022-03-11 07:23:53 UTC]   253B STANDARD dim_bar/20220311_102351_00139_giawv_ecfd5036-44d3-47da-9f87-6e02e04b8c5b
+[2022-03-11 07:23:53 UTC]   380B STANDARD dim_bar/20220311_102351_00139_giawv_ecfd5036-44d3-47da-9f87-6e02e04b8c5b
 ```
 
 The data can be cleaned up via trino:
@@ -348,6 +348,153 @@ That's it, this is an easy way to get a small data lake working.
 This is meant to be a fully functional starting point that can be expanded and customized to fit your needs.
 Everything here is provided as-is, so your mileage may vary.
 Please report any bugs or issues and we will try to get to them.
+
+## Cloud Provider Installation
+
+Walden can be used either on-premise or in hosted Kubernetes environments.
+Here are some example steps for setting up Walden in various cloud providers.
+
+### AWS
+
+This tutorial assumes you already have an AWS account set up. Instructions should be run from either Mac or Linux machines. Also keep in mind this is likely to cost a few dollars in AWS costs to try out. We've been able to keep costs below $5 USD when running a minimal cluster for a short amount of time.
+
+#### Configure AWS EKS Admin
+
+To manage the EKS cluster programmatically from your local machine, you will need to create a new AWS IAM user and grant it appropriate permissions.
+
+The easiest way to do so reproducibly involves using a "CloudShell" session. To bring one up, search for "CloudShell" in your AWS console. Note that you should be logged in with your AWS root account when running these operations.
+
+1. Create IAM user
+
+    Run the following in your AWS cloud shell session
+    ```
+    aws iam create-user --user-name eksadmin
+    ```
+    **Note**: you can skip this step if you already have an IAM user you would like to use. Simply replace `eksadmin` with your user name where necessary.
+
+2. Create IAM policies
+
+    To be able to spin up an EKS cluster via `eksctl` we will need to define two new policies, with which we will associate our EKS admin user. The policy definitions are available in policy documents stored in this repositories. To access them, clone the repository first (from your AWS cloud shell session):
+
+    ```
+    git clone https://github.com/scie-nz/walden.git
+    cd walden
+    ```
+
+    We will preserve the account identifier for future use:
+
+    ```
+    export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+    echo $AWS_ACCOUNT_ID
+    ```
+
+    We can now render the policies, i.e. by substituting the `AWS_ACCOUNT_ID` we just captured:
+    ```
+    cat aws/eks-all-access.json | envsubst > eks-all-access-rendered.json
+    cat aws/iam-limited-access.json | envsubst > iam-limited-access-rendered.json
+    ```
+
+    Then we will create our policies:
+    ```
+    aws iam create-policy --policy-name EKSAllAccess --policy-document file://eks-all-access-rendered.json
+    aws iam create-policy --policy-name IAMLimitedAccess --policy-document file://iam-limited-access-rendered.json
+    ```
+
+3. Create IAM EKS Admin group
+
+    First we create our group and add our EKS admin user to it:
+
+    ```
+    aws iam create-group --group-name EKSAdmins
+    aws iam add-user-to-group --group-name EKSAdmins --user-name eksadmin
+    ```
+
+    We are then ready to attach permissions to the group:
+
+    ```
+    aws iam attach-group-policy --group-name EKSAdmins --policy-arn arn:aws:iam::$AWS_ACCOUNT_ID:policy/EKSAllAccess
+    aws iam attach-group-policy --group-name EKSAdmins --policy-arn arn:aws:iam::$AWS_ACCOUNT_ID:policy/IAMLimitedAccess
+    aws iam attach-group-policy --group-name EKSAdmins --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
+    aws iam attach-group-policy --group-name EKSAdmins --policy-arn arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+    ```
+
+    You are now ready to interact with the cluster using your `eksadmin` user. The rest of the interactions will occurr via your regular machine, rather than a cloud shell instance.
+
+#### Deploy EKS cluster
+
+The following set of operations are meant to run on your home machine (Mac or Linux only).
+
+To provision this cluster you will need to have the following software installed:
+- the AWS [cli](https://aws.amazon.com/cli/)
+- [eksctl](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+
+1. Set up your AWS CLI authentication
+
+    Edit `~/.aws/config` and add your AWS access key ID and secret (your access key ID starts with `AKIA`):
+
+    ```
+    [walden]
+    aws_access_key_id=[YOUR ACCESS KEY ID GOES HERE]
+    aws_secret_access_key=[YOUR ACCESS SECRET GOES HERE]
+    ```
+
+    Then run:
+    ```
+    export AWS_PROFILE=walden
+    aws sts get-caller-identity
+    ```
+
+    You should see something like:
+    ```
+    {
+        "UserId": "AIDA**********",
+        "Account": "1234567890",
+        "Arn": "arn:aws:iam::1234567890:user/[someusername]"
+    }
+    ```
+
+2. Create minimal EKS cluster using `eksctl`
+
+    To create a minimal cluster, run:
+    ```
+    eksctl create cluster --name=eks-walden --nodes=4 --node-type=r5.large --spot
+    ```
+
+    This command will create an EKS cluster, and one default node group with 4 nodes in it. This is purely a test cluster -- `eksctl` being a very powerful tool that allows you to customize your cluster whichever way you see fit.
+
+    The command will take about 30 minutes to run, while AWS provisions requisite resources.
+
+    Once the cluster creation has succeeded, run:
+
+    ```
+    kubectl get nodes
+    ```
+
+#### Deploy Walden
+
+You now have a working EKS cluster, on which you can deploy Walden just as you would on an on-premise cluster. Follow [these instructions](https://github.com/scie-nz/walden#deploy-walden) to deploy it.
+
+#### Clean up
+
+First, get the name of your nodegroup:
+```
+eksctl get nodegroup --cluster eks-walden
+```
+
+Then, delete the nodegroup:
+```
+eksctl delete nodegroup [NODEGROUP NAME GOES HERE] --cluster eks-walden
+```
+
+You can now delete your cluster:
+```
+eksctl delete cluster eks-walden
+```
+
+Finally, you should clean up your EBS volumes. You can do so by visiting the [Volumes](https://us-west-2.console.aws.amazon.com/ec2/v2/home?#Volumes) section in your AWS console.
+
+NOTE: please take care when cleaning your EBS volumes. You may lose data you care about. Make sure you understand what volumes you're deleting.
 
 ## Advanced topics
 
