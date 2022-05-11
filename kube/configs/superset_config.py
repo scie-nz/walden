@@ -1,4 +1,5 @@
 import os
+from celery.schedules import crontab
 from cachelib.redis import RedisCache
 
 def env(key, default=None):
@@ -18,6 +19,8 @@ CACHE_CONFIG = {
     'CACHE_REDIS_DB': env('REDIS_CACHE_DB', 1),
 }
 DATA_CACHE_CONFIG = CACHE_CONFIG
+EXPLORE_FORM_DATA_CACHE_CONFIG = CACHE_CONFIG
+FILTER_STATE_CACHE_CONFIG = CACHE_CONFIG
 
 SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{env('POSTGRES_USER')}:{env('POSTGRES_PASSWORD')}@{env('POSTGRES_HOST')}:{env('POSTGRES_PORT', 5432)}/{env('POSTGRES_DB_NAME', 'superset')}"
 SQLALCHEMY_TRACK_MODIFICATIONS = True
@@ -33,8 +36,34 @@ WTF_CSRF_TIME_LIMIT = 60 * 60 * 24 * 365
 class CeleryConfig(object):
     BROKER_URL = f"redis://:{env('REDIS_PASSWORD')}@{env('REDIS_HOST')}:{env('REDIS_PORT', 6379)}/{env('REDIS_CELERY_DB', 0)}"
     CELERY_IMPORTS = ('superset.sql_lab', )
-    CELERY_RESULT_BACKEND = f"redis://:{env('REDIS_PASSWORD')}@{env('REDIS_HOST')}:{env('REDIS_PORT', 6379)}/{env('REDIS_CELERY_DB', 0)}"
-    CELERY_ANNOTATIONS = {'tasks.add': {'rate_limit': '10/s'}}
+    CELERY_RESULT_BACKEND = f"redis://:{env('REDIS_PASSWORD')}@{env('REDIS_HOST')}:{env('REDIS_PORT', 6379)}/{env('REDIS_RESULTS_DB', 1)}"
+    CELERYD_LOG_LEVEL = "DEBUG"
+    CELERYD_PREFETCH_MULTIPLIER = 1
+    CELERY_ACKS_LATE = True
+    CELERY_ANNOTATIONS = {
+        'tasks.add': {
+            'rate_limit': '10/s'
+        },
+        'sql_lab.get_sql_results': {
+            'rate_limit': '100/s',
+        },
+        'email_reports.send': {
+            'rate_limit': '1/s',
+            'time_limit': 600,
+            'soft_time_limit': 600,
+            'ignore_result': True,
+        }
+    }
+    CELERYBEAT_SCHEDULE = {
+        'reports.scheduler': {
+            'task': 'reports.scheduler',
+            'schedule': crontab(minute='*', hour='*'),
+        },
+        'reports.prune_log': {
+            'task': 'reports.prune_log',
+            'schedule': crontab(minute=0, hour=0),
+        }
+    }
 CELERY_CONFIG = CeleryConfig
 
 RESULTS_BACKEND = RedisCache(

@@ -18,7 +18,7 @@ image:
   # See walden/docker/* for image definitions.
   devserver: docker.io/scienz/walden-devserver:2022.05.11
   metastore: docker.io/scienz/walden-metastore:2022.05.11
-  superset: docker.io/scienz/walden-superset:2022.04.30b
+  superset: docker.io/scienz/walden-superset:2022.05.11
   trino: docker.io/scienz/walden-trino:2022.05.11b
 
 alluxio:
@@ -94,6 +94,25 @@ superset:
   mem_limit_worker: 1G
   # An external IP for the Superset service
   external_ip: ""
+
+  # Custom environment variables to include in superset pods.
+  # This may be used for providing custom credentials or other configuration.
+  #custom_env:
+  #- name: SMTP_USER
+  #  valueFrom:
+  #    secretKeyRef:
+  #      name: email-smtp
+  #      key: user
+  #- name: SMTP_PASSWORD
+  #  valueFrom:
+  #    secretKeyRef:
+  #      name: email-smtp
+  #      key: password
+  #- name: SLACK_API_TOKEN
+  #  valueFrom:
+  #    secretKeyRef:
+  #      name: slack
+  #      key: token
 
 trino:
   # Number of worker replicas. Each replica also gets an Alluxio worker, if Alluxio is enabled.
