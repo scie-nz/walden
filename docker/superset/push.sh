@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Allow custom tag via either WALDEN_SUPERSET_TAG or WALDEN_TAG, default is current date
-TAG=${WALDEN_SUPERSET_TAG:=${WALDEN_TAG:=$(date +%Y.%m.%d)}}
+# Allow custom tag via either SUPERSET_TAG or TAG, default is current date
+TAG=${SUPERSET_TAG:=${TAG:=$(date +%Y.%m.%d)}}
 
-# Allow custom registry/org via WALDEN_ORG
-docker push ${WALDEN_ORG:=docker.io/scienz}/walden-superset:$TAG
+# Allow custom registry/org via ORG
+docker push ${ORG:=docker.io/scienz}/walden-superset:$TAG

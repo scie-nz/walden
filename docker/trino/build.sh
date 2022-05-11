@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Allow custom tag via either WALDEN_TRINO_TAG or WALDEN_TAG, default is current date
-TAG=${WALDEN_TRINO_TAG:=${WALDEN_TAG:=$(date +%Y.%m.%d)}}
+# Allow custom tag via either TRINO_TAG or TAG, default is current date
+TAG=${TRINO_TAG:=${TAG:=$(date +%Y.%m.%d)}}
 
-# Allow custom registry/org via WALDEN_ORG
-docker build . -t ${WALDEN_ORG:=docker.io/scienz}/walden-trino:${TAG}b
+# Allow custom registry/org via ORG
+docker build . -t ${ORG:=docker.io/scienz}/walden-trino:${TAG}

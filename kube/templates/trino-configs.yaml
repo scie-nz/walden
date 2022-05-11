@@ -36,6 +36,8 @@ metadata:
   name: trino-config
   namespace: walden
 data:
+  trino-launch.sh: |
+{{ .Files.Get "configs/trino-launch.sh" | indent 4 }}
   config.properties.template: |
 {{ .Files.Get "configs/trino_config.properties.template" | indent 4 }}
   postgres.properties: |

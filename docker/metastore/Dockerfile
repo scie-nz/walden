@@ -1,7 +1,7 @@
 # Loosely based on: https://techjogging.com/standalone-hive-metastore-presto-docker.html
 
 # Use current LTS
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ENV HADOOP_VERSION=3.3.1 \
   METASTORE_VERSION=3.1.2 \
@@ -48,8 +48,3 @@ RUN mkdir -p $HIVE_HOME/lib \
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 \
   HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$HIVE_HOME/lib/aws-java-sdk-bundle-$AWS_SDK_JAR_VERSION.jar:$HIVE_HOME/lib/hadoop-aws-$HADOOP_VERSION.jar:$HIVE_HOME/lib/postgresql-$POSTGRES_JDBC_VERSION.jar \
   METASTORE_AUX_JARS_PATH=$HIVE_HOME/lib/aws-java-sdk-bundle-$AWS_SDK_JAR_VERSION.jar:$HIVE_HOME/lib/hadoop-aws-$HADOOP_VERSION.jar:$HIVE_HOME/lib/alluxio-shaded-client-$ALLUXIO_VERSION.jar
-
-EXPOSE 9083
-COPY entrypoint.sh /
-WORKDIR $HIVE_HOME
-ENTRYPOINT ["/entrypoint.sh"]

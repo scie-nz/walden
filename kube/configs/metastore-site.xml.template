@@ -25,15 +25,15 @@
     </property>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>jdbc:postgresql://$POSTGRES_HOST:$POSTGRES_PORT/$METASTORE_DB</value>
+        <value>jdbc:postgresql://$(echo $POSTGRES_HOST):$(echo $POSTGRES_PORT)/$(echo $METASTORE_DB)</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>
-        <value>$POSTGRES_USER</value>
+        <value>$(echo $POSTGRES_USER)</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionPassword</name>
-        <value>$POSTGRES_PASSWORD</value>
+        <value>$(echo $POSTGRES_PASSWORD)</value>
     </property>
     <!--
       Without this, metastore will try to talk to actual AWS when creating schemas in s3a:// locations.

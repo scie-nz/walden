@@ -1,6 +1,10 @@
 coordinator=$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo true; else echo false; fi")
 node-scheduler.include-coordinator=false
-http-server.http.port=80
+
+# We listen on a different port to avoid issues around running as non-root
+http-server.http.port=8080
+# Meanwhile the 'trino' coordinator service is at port 80
+discovery.uri=http://trino
 
 # This is the max amount of user memory a query can use on a worker.
 # Default: JVM max memory * 0.3
@@ -37,5 +41,3 @@ exchange.http-client.max-content-length=256MB
 # The number of concurrent writer threads per worker per query.
 # Default: 1
 task.writer-count=2
-
-discovery.uri=http://trino

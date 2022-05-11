@@ -25,8 +25,12 @@ spec:
 {{ toYaml .Values.node.toleration.devserver | indent 8 }}
 {{- end }}
       containers:
-      - image: {{ .Values.image.devserver }}
-        name: devserver
+      - name: devserver
+        image: {{ .Values.image.devserver }}
+        command:
+        - /bin/bash
+        - -c
+        - cd ~ && sleep infinity
         volumeMounts:
         - name: devserver-persistent-storage
           mountPath: /root

@@ -67,6 +67,13 @@ spec:
       containers:
       - name: metastore
         image: {{ .Values.image.metastore }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          bash -c "echo -e \"$(cat /config/metastore-site.xml.template)\" > /opt/hive-metastore/conf/metastore-site.xml" &&
+          /opt/hive-metastore/bin/schematool -initSchema -dbType postgres -ifNotExists &&
+          /opt/hive-metastore/bin/start-metastore
         env:
         - name: METASTORE_PORT
           value: "9083"

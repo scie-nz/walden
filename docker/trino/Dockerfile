@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND="noninteractive" \
   MVN_MIRROR="https://repo1.maven.org/maven2/"
 
 RUN apt-get update --fix-missing \
-  && apt-get -y install apache2-utils curl gnupg2 keychain python3.8 software-properties-common uuid-runtime \
+  && apt-get -y install apache2-utils curl gnupg2 keychain python3.8 software-properties-common uuid-runtime gettext-base \
   && add-apt-repository ppa:deadsnakes/ppa \
   && apt-get update --fix-missing \
   && apt-get clean \
@@ -17,7 +17,10 @@ RUN apt-get update --fix-missing \
   \
   && echo "presto soft nofile 131072" >> /etc/security/limits.conf \
   && echo "presto hard nofile 131072" >> /etc/security/limits.conf \
-  && echo "session required pam_limits.so" >> /etc/pam.d/common-session
+  && echo "session required pam_limits.so" >> /etc/pam.d/common-session \
+  \
+  && groupadd -g 1000 trino \
+  && useradd -d /trino-server -s /bin/bash -u 1000 -g 1000 trino
 
 # Install Trino to /trino-server as a separate stage at the end.
 # Maximizes caching when switching versions.
@@ -25,9 +28,9 @@ RUN apt-get update --fix-missing \
 ENV TRINO_VERSION=380
 
 RUN curl https://repo1.maven.org/maven2/io/trino/trino-server/${TRINO_VERSION}/trino-server-${TRINO_VERSION}.tar.gz | tar xzf - \
-  && mv -v trino-server-${TRINO_VERSION} trino-server \
-  && mkdir -p trino-server/etc/catalog
+  && mv -v trino-server-${TRINO_VERSION}/ trino-server/ \
+  && mkdir -p trino-server/etc/catalog \
+  && chown -R trino:trino trino-server
 
-COPY entrypoint.sh /entrypoint.sh
 WORKDIR /trino-server
-ENTRYPOINT ["/entrypoint.sh"]
+USER trino

@@ -32,6 +32,10 @@ spec:
       tolerations:
 {{ toYaml .Values.node.toleration.trino_worker | indent 8 }}
 {{- end }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       terminationGracePeriodSeconds: 10
 {{- if .Values.alluxio.enabled }}
       initContainers:
@@ -55,6 +59,9 @@ spec:
         command:
         - /bin/bash
         - -c
+        # 1. Create diskcache/memcache directories for hive and any other catalogs.
+        # 2. Copy read-only configmap files into /trino-server/etc[/catalog]
+        # 3. trino-launch.sh: Render any templated configs, then start trino
         - |
           mkdir -p /diskcache/hive /memcache/hive &&
 {{- range $name, $props := .Values.trino.custom_catalogs }}
@@ -63,7 +70,7 @@ spec:
           mkdir -p /trino-server/etc/catalog &&
           cp -v /tmp/roconf/* /trino-server/etc &&
           cp -v /tmp/rocatalog/* /trino-server/etc/catalog &&
-          /entrypoint.sh
+          /bin/bash /trino-server/etc/trino-launch.sh
         env:
         - name: HIVE_METASTORE_HOST
           value: metastore
@@ -100,7 +107,7 @@ spec:
             memory: {{ .Values.trino.mem_limit_worker }}i # "nG" => "nGi"
         ports:
         - name: http
-          containerPort: 80
+          containerPort: 8080
         - name: hivecache-data
           containerPort: 8898
         - name: hivecache-bk
@@ -158,9 +165,6 @@ spec:
         envFrom:
         - configMapRef:
             name: alluxio-config
-        securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
         readinessProbe:
           tcpSocket:
             port: alluxio-rpc
@@ -223,9 +227,6 @@ spec:
         envFrom:
         - configMapRef:
             name: alluxio-config
-        securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
         readinessProbe:
           tcpSocket:
             port: job-rpc

@@ -1,5 +1,5 @@
-# Use latest
-FROM ubuntu:21.10
+# Use current LTS
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND="noninteractive"
 
@@ -9,7 +9,7 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-ENV TRINO_VERSION=371
+ENV TRINO_VERSION=380
 
 RUN curl -o /usr/bin/trino-cli https://repo1.maven.org/maven2/io/trino/trino-cli/${TRINO_VERSION}/trino-cli-${TRINO_VERSION}-executable.jar \
   && echo 'trino-cli --server trino --user "${TRINO_USER}" --catalog hive --schema $1' > /usr/bin/trino \
@@ -17,8 +17,7 @@ RUN curl -o /usr/bin/trino-cli https://repo1.maven.org/maven2/io/trino/trino-cli
   \
   && pip3 install presto-python-client minio \
   && curl -o /usr/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc \
-  && chmod +x /usr/bin/mc
-
-WORKDIR /home/root
-COPY entrypoint.sh /home/root
-ENTRYPOINT ["/home/root/entrypoint.sh"]
+  && chmod +x /usr/bin/mc \
+  \
+  && trino-cli --version \
+  && mc --version

@@ -55,20 +55,25 @@ spec:
       tolerations:
 {{ toYaml .Values.node.toleration.trino_coordinator | indent 8 }}
 {{- end }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - name: trino-coordinator
         image: {{ .Values.image.trino }}
         command:
         - /bin/bash
         - -c
-        # Note: We currently generate a credentials file as an example.
-        #       Trino requires that SSL be enabled before credentials can be used.
+        # 1. Copy read-only configmap files into /trino-server/etc[/catalog]
+        # 2. Render htpasswd entry for trino user/pass. Not used yet, requires SSL.
+        # 3. trino-launch.sh: Render any templated configs, then start trino
         - |
           mkdir -p /trino-server/etc/catalog &&
           cp -v /tmp/roconf/* /trino-server/etc &&
           cp -v /tmp/rocatalog/* /trino-server/etc/catalog &&
-          htpasswd -c -b -B -C 10 /trino-server/etc/password.db "$TRINO_USER" "$TRINO_PASSWORD"
-          /entrypoint.sh
+          htpasswd -c -b -B -C 10 /trino-server/etc/password.db "$TRINO_USER" "$TRINO_PASSWORD" &&
+          /bin/bash /trino-server/etc/trino-launch.sh
         env:
         - name: HIVE_METASTORE_HOST
           value: metastore
@@ -115,7 +120,7 @@ spec:
             memory: {{ .Values.trino.mem_limit_coordinator }}i # "nG" => "nGi"
         ports:
         - name: http
-          containerPort: 80
+          containerPort: 8080
         - name: hivecache-data
           containerPort: 8898
         - name: hivecache-bk
@@ -132,6 +137,9 @@ spec:
           mountPath: /tmp/rocatalog
         - name: etc
           mountPath: /trino-server/etc
+        # Used for misc logsfiles/pidfiles etc, not table data
+        - name: data
+          mountPath: /data
       volumes:
       - name: config
         configMap:
@@ -140,4 +148,6 @@ spec:
         configMap:
           name: trino-catalog
       - name: etc
+        emptyDir: {}
+      - name: data
         emptyDir: {}

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Allow custom tag via either WALDEN_METASTORE_TAG or WALDEN_TAG, default is current date
-TAG=${WALDEN_METASTORE_TAG:=${WALDEN_TAG:=$(date +%Y.%m.%d)}}
+# Allow custom tag via either METASTORE_TAG or TAG, default is current date
+TAG=${METASTORE_TAG:=${TAG:=$(date +%Y.%m.%d)}}
 
-# Allow custom registry/org via WALDEN_ORG
-docker push ${WALDEN_ORG:=docker.io/scienz}/walden-metastore:$TAG
+# Allow custom registry/org via ORG
+docker push ${ORG:=docker.io/scienz}/walden-metastore:$TAG
