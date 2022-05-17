@@ -2,6 +2,8 @@
 
 Walden is a small data lake meant for solitary use. Read more about it on [our website](https://scie.nz/walden).
 
+![Component diagram: Superset, Trino, Hive Metastore, MinIO](components.png)
+
 ## Prerequisites
 
 There are a few things you need before you create your Walden deployment:
