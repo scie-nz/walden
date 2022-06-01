@@ -1,3 +1,4 @@
+{{- if .Values.superset.postgres.internal }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,7 +7,7 @@ metadata:
 spec:
   ports:
   - name: postgres
-    port: 5432
+    port: {{ .Values.superset.postgres.port }}
     targetPort: postgres
   selector:
     app: superset-postgres
@@ -49,7 +50,7 @@ spec:
         - name: PGDATA
           value: /storage/postgres
         - name: POSTGRES_DB
-          value: superset
+          value: {{ .Values.superset.postgres.db }}
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -85,3 +86,4 @@ spec:
       resources:
         requests:
           storage: 1Gi
+{{- end }} # end of large superset.postgres.internal block

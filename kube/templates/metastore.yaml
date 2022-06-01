@@ -58,13 +58,15 @@ spec:
         command:
         - /bin/sh
         - -c
-        - until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo 'waiting for postgres'; sleep 1; done
+        - until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo "waiting for postgres: ${POSTGRES_HOST}:${POSTGRES_PORT}"; sleep 1; done
         env:
         - name: POSTGRES_HOST
-          value: metastore-postgres
+          value: {{ .Values.metastore.postgres.host }}
         - name: POSTGRES_PORT
-          value: "5432"
+          value: {{ .Values.metastore.postgres.port | quote }}
+
       containers:
+
       - name: metastore
         image: {{ .Values.image.metastore }}
         command:
@@ -78,9 +80,11 @@ spec:
         - name: METASTORE_PORT
           value: "9083"
         - name: POSTGRES_HOST
-          value: metastore-postgres
+          value: {{ .Values.metastore.postgres.host }}
         - name: POSTGRES_PORT
-          value: "5432"
+          value: {{ .Values.metastore.postgres.port | quote }}
+        - name: POSTGRES_DB
+          value: {{ .Values.metastore.postgres.db }}
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -91,8 +95,6 @@ spec:
             secretKeyRef:
               name: metastore-postgres
               key: pass
-        - name: METASTORE_DB
-          value: metastore
         # Provide credentials for metastore to access minio directly when creating tables.
         - name: AWS_ACCESS_KEY_ID
           valueFrom:

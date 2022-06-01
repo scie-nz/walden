@@ -95,6 +95,15 @@ superset:
   # An external IP for the Superset service
   external_ip: ""
 
+  # Configuration for the Postgres instance used by Superset.
+  postgres:
+    # By default Walden will deploy a basic internal instance, but you may instead wish to provide your own.
+    # If internal=False, you must create a Secret named "superset-postgres" containing "user"/"pass" credentials.
+    internal: True
+    host: superset-postgres
+    port: 5432
+    db: superset
+
   # Custom environment variables to include in superset pods.
   # This may be used for providing custom credentials or other configuration.
   #custom_env:
@@ -113,6 +122,16 @@ superset:
   #    secretKeyRef:
   #      name: slack
   #      key: token
+
+metastore:
+  # Configuration for the Postgres instance used by the Metastore.
+  postgres:
+    # By default Walden will deploy a basic internal instance, but you may instead wish to provide your own.
+    # If internal=False, you must create a Secret named "metastore-postgres" containing "user"/"pass" credentials.
+    internal: True
+    host: metastore-postgres
+    port: 5432
+    db: metastore
 
 trino:
   # Number of worker replicas. Each replica also gets an Alluxio worker, if Alluxio is enabled.

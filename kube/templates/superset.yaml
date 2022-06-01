@@ -105,12 +105,12 @@ spec:
         command:
         - /bin/sh
         - -c
-        - until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo 'waiting for postgres'; sleep 1; done
+        - until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo "waiting for postgres: ${POSTGRES_HOST}:${POSTGRES_PORT}"; sleep 1; done
         env:
         - name: POSTGRES_HOST
-          value: superset-postgres
+          value: {{ .Values.superset.postgres.host }}
         - name: POSTGRES_PORT
-          value: "5432"
+          value: {{ .Values.superset.postgres.port | quote }}
 
       containers:
 
@@ -150,7 +150,11 @@ spec:
               name: superset-redis
               key: pass
         - name: POSTGRES_HOST
-          value: superset-postgres
+          value: {{ .Values.superset.postgres.host }}
+        - name: POSTGRES_PORT
+          value: {{ .Values.superset.postgres.port | quote }}
+        - name: POSTGRES_DB
+          value: {{ .Values.superset.postgres.db }}
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -213,7 +217,11 @@ spec:
               name: superset-redis
               key: pass
         - name: POSTGRES_HOST
-          value: superset-postgres
+          value: {{ .Values.superset.postgres.host }}
+        - name: POSTGRES_PORT
+          value: {{ .Values.superset.postgres.port | quote }}
+        - name: POSTGRES_DB
+          value: {{ .Values.superset.postgres.db }}
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
