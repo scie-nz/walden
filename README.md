@@ -498,6 +498,47 @@ Finally, you should clean up your EBS volumes. You can do so by visiting the [Vo
 
 NOTE: please take care when cleaning your EBS volumes. You may lose data you care about. Make sure you understand what volumes you're deleting.
 
+## Azure
+
+This tutorial assumes you have a working Azure account, with default quota settings. You will likely need to activate pay-as-you-go billing to be able to provision the AKS cluster described here.
+
+### Create cluster
+
+First, create a dedicated resource group, in the `centralus` zone.
+
+```
+az group create --name WaldenResourceGroup -l centralus
+```
+
+You are now ready to create your cluster:
+```
+az aks create -g WaldenResourceGroup -n WaldenAKS --node-count 5 --node-vm-size Standard_B2ms
+```
+
+To connect to the cluster:
+
+```
+az aks get-credentials --resource-group WaldenResourceGroup --name WaldenAKS
+```
+
+### Deploy Walden
+
+You now have a working EKS cluster, on which you can deploy Walden just as you would on an on-premise cluster. Follow [these instructions](https://github.com/scie-nz/walden#deploy-walden) to deploy it.
+
+### Tear down the cluster
+
+First, delete the cluster:
+
+```
+az aks delete --resource-group WaldenResourceGroup --name walden
+```
+
+You can now delete the resource group:
+
+```
+az group delete --resource-group WaldenResourceGroup
+```
+
 ## Advanced topics
 
 ### Adding external data sources via Trino
