@@ -98,7 +98,12 @@ superset:
   # Configuration for the Postgres instance used by Superset.
   postgres:
     # By default Walden will deploy a basic internal instance, but you may instead wish to provide your own.
-    # If internal=False, you must create a Secret named "superset-postgres" containing "user"/"pass" credentials.
+    # If internal=False, you must manually create a Secret named "superset-postgres" containing external "user"/"pass" credentials:
+    #   kubectl create secret generic superset-postgres -n walden --from-literal=user=FOO --from-literal=pass=BAR
+    # Azure managed postgres example (INSECURE - access should be limited to kube cluster):
+    #   az postgres flexible-server create --resource-group WaldenResourceGroup --name walden --database superset --storage-size 32 --public-access 0.0.0.0
+    #     (then get host, username, and password from creation output)
+    #   az postgres flexible-server delete --resource-group WaldenResourceGroup --name walden
     internal: True
     host: superset-postgres
     port: 5432
@@ -127,7 +132,8 @@ metastore:
   # Configuration for the Postgres instance used by the Metastore.
   postgres:
     # By default Walden will deploy a basic internal instance, but you may instead wish to provide your own.
-    # If internal=False, you must create a Secret named "metastore-postgres" containing "user"/"pass" credentials.
+    # If internal=False, you must manually create a Secret named "metastore-postgres" containing external "user"/"pass" credentials:
+    #   kubectl create secret generic metastore-postgres -n walden --from-literal=user=FOO --from-literal=pass=BAR
     internal: True
     host: metastore-postgres
     port: 5432
