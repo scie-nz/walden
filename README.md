@@ -468,7 +468,6 @@ To provision this cluster you will need to have the following software installed
     The command will take about 30 minutes to run, while AWS provisions requisite resources.
 
     Once the cluster creation has succeeded, run:
-
     ```
     kubectl get nodes
     ```
@@ -498,14 +497,13 @@ Finally, you should clean up your EBS volumes. You can do so by visiting the [Vo
 
 NOTE: please take care when cleaning your EBS volumes. You may lose data you care about. Make sure you understand what volumes you're deleting.
 
-## Azure
+### Azure
 
 This tutorial assumes you have a working Azure account, with default quota settings. You will likely need to activate pay-as-you-go billing to be able to provision the AKS cluster described here.
 
-### Create cluster
+#### Create AKS cluster
 
-First, create a dedicated resource group, in the `centralus` zone.
-
+First, create a dedicated resource group, this example uses the `centralus` region:
 ```
 az group create --name WaldenResourceGroup -l centralus
 ```
@@ -516,25 +514,22 @@ az aks create -g WaldenResourceGroup -n WaldenAKS --node-count 5 --node-vm-size 
 ```
 
 To connect to the cluster:
-
 ```
 az aks get-credentials --resource-group WaldenResourceGroup --name WaldenAKS
 ```
 
-### Deploy Walden
+#### Deploy Walden
 
-You now have a working EKS cluster, on which you can deploy Walden just as you would on an on-premise cluster. Follow [these instructions](https://github.com/scie-nz/walden#deploy-walden) to deploy it.
+You now have a working AKS cluster, on which you can deploy Walden just as you would on an on-premise cluster. Follow [these instructions](https://github.com/scie-nz/walden#deploy-walden) to deploy it.
 
-### Tear down the cluster
+#### Clean up
 
 First, delete the cluster:
-
 ```
 az aks delete --resource-group WaldenResourceGroup --name walden
 ```
 
 You can now delete the resource group:
-
 ```
 az group delete --resource-group WaldenResourceGroup
 ```
