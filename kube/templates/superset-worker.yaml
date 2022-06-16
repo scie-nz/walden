@@ -31,12 +31,12 @@ spec:
         image: {{ .Values.image.busybox }}
         command:
         - /bin/sh
-        - /walden/superset_copy_configs.sh
+        - /ro/superset_copy_configs.sh
         volumeMounts:
         - name: config
           mountPath: /out
-        - name: config-walden
-          mountPath: /walden
+        - name: config-ro
+          mountPath: /ro
           readOnly: true
         - name: config-custom
           mountPath: /custom
@@ -112,7 +112,7 @@ spec:
       volumes:
       - name: config
         emptyDir: {}
-      - name: config-walden
+      - name: config-ro
         configMap:
           name: superset
       - name: config-custom
