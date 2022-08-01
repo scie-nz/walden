@@ -17,7 +17,7 @@ image:
   # The latest release versions for Walden images.
   # See walden/docker/* for image definitions.
   devserver: docker.io/scienz/walden-devserver:2022.05.11
-  metastore: docker.io/scienz/walden-metastore:2022.05.11
+  metastore: docker.io/scienz/walden-metastore:2022.08.01
   superset: docker.io/scienz/walden-superset:2022.05.11
   trino: docker.io/scienz/walden-trino:2022.05.11b
 
