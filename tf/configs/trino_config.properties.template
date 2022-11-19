@@ -1,4 +1,4 @@
-coordinator=$(bash -c "if [[ $HOSTNAME == trino-coordinator-* ]]; then echo true; else echo false; fi")
+coordinator=$${ENV:CONFIG_COORDINATOR}
 node-scheduler.include-coordinator=false
 
 # We listen on a different port to avoid issues around running as non-root
@@ -8,13 +8,13 @@ discovery.uri=http://trino
 
 # This is the max amount of user memory a query can use on a worker.
 # Default: JVM max memory * 0.3
-query.max-memory-per-node=$(echo $CONFIG_QUERY_MAX_MEMORY_PER_NODE)
+query.max-memory-per-node=${query_max_memory_per_node}
 # This is the max amount of user memory a query can use across the entire cluster.
 # Default: 20GB
-query.max-memory=$(echo $CONFIG_QUERY_MAX_MEMORY)
+query.max-memory=${query_max_memory}
 # This is the amount of memory set aside as headroom/buffer in the JVM heap
 # for allocations that are not tracked by Trino.
-memory.heap-headroom-per-node=$(echo $CONFIG_MEMORY_HEAP_HEADROOM_PER_NODE)
+memory.heap-headroom-per-node=${memory_heap_headroom_per_node}
 # (EXPERIMENTAL) This is the max amount of the memory a task can use on a node in the cluster.
 # Default: unrestricted
 #query.max-memory-per-task=4000MB
@@ -26,9 +26,9 @@ spill-compression-enabled=true
 # This is on local disk - we put it in a persistent volume.
 spiller-spill-path=/data/spill
 # Max spill space to be used by all queries on a single node.
-max-spill-per-node=$(echo $CONFIG_MAX_SPILL_PER_NODE)
+max-spill-per-node=${max_spill_per_node}
 # Max spill space to be used by a single query on a single node.
-query-max-spill-per-node=$(echo $CONFIG_QUERY_MAX_SPILL_PER_NODE)
+query-max-spill-per-node=${query_max_spill_per_node}
 
 # Increase caps on row size 8x. This may reduce errors like
 # "PageTooLargeException: Remote page is too large" when handling large arrays.

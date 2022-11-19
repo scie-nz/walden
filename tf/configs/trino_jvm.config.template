@@ -1,5 +1,5 @@
 -server
--Xmx$(echo $CONFIG_JVM_HEAP)
+-Xmx${jvm_heap}
 -XX:-UseBiasedLocking
 -XX:+UseG1GC
 -XX:G1HeapRegionSize=32M

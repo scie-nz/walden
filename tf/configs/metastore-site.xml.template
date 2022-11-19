@@ -25,7 +25,7 @@
     </property>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>jdbc:postgresql://$(echo $POSTGRES_HOST):$(echo $POSTGRES_PORT)/$(echo $POSTGRES_DB)</value>
+        <value>jdbc:postgresql://${postgres_host}:${postgres_port}/${postgres_db}</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>

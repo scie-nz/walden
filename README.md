@@ -11,7 +11,7 @@ There are a few things you need before you create your Walden deployment:
 - You need a Linux environment from which to run the code. The code was tested against Ubuntu 20.04 LTS as well as Arch Linux.
 - You need a Kubernetes Cluster. If you don't know what that is, check out [K3s](https://k3s.io/).
 - Your Kubernetes cluster needs to have at least 4 nodes (regular PCs are fine), with at least 6GB of RAM. We run this on 4 machines, each with 16 GB RAM. It works.
-- You need to install [Helm](https://helm.sh/docs/intro/quickstart/), a Kubernetes templating engine. We use this to generate secrets and handle some minor templating.
+- You need to install [Terraform](https://developer.hashicorp.com/terraform/downloads), a tool for deploying things. This is used to manage the deployment of Walden into your cluster.
 
 ## Running Walden
 
@@ -19,10 +19,10 @@ There are a few things you need before you create your Walden deployment:
 
 ```
 git clone https://github.com/scie-nz/walden
-cd walden/kube
+cd walden/tf
 
-# requires Helm and kubectl access to cluster:
-./deploy.sh values-default.yaml
+# requires Terraform and kubectl access to cluster:
+tf apply
 ```
 
 You should see a whole bunch of text resulting from the deploy command. As
@@ -164,7 +164,7 @@ devserver# mc ls walden-minio/direct
 
 Walden comes optionally packaged with Alluxio, which provides several benefits for processing data across a variety of backend storage systems. Alluxio can be used to support other storage types that are not natively supported by Trino, such as external NFS servers, while also providing a caching layer in front of that underlying storage. However, if you are not using these additional features, you can also leave Alluxio turned off (default), and instead use Trino's own built-in Hive caching.
 
-To enable Alluxio, edit your `values.yaml` to set `alluxio.enabled: true` before deploying Walden into your cluster.
+To enable Alluxio, create a custom `terraform.tfvars` file with `alluxio_enabled = true` before deploying Walden into your cluster.
 
 For testing Alluxio, we will use a separate bucket named `alluxio` that we will create in the included MinIO instance.
 
@@ -241,11 +241,10 @@ In the previous section we connected Alluxio to the MinIO instance, and then use
 
 In this example, we will connect Walden to an NFS server, using Alluxio to broker the NFS volume and serve it to Trino.
 
-Walden includes two configuration options in its `values.yaml` as an example for enabling an external NFS mount:
+Walden exposes two configuration options for specifying an external NFS mount that can be applied by creating your own `terraform.tfvars` file:
 ```
-alluxio:
-  nfs_server: "<ip/hostname>"
-  nfs_path: "</nfs/server/directory>"
+alluxio_nfs_server = "<ip/hostname>"
+alluxio_nfs_path = "</nfs/server/directory>"
 ```
 
 When those options are both provided, the worker pods will all automatically mount the NFS volume to `/mnt/nfs`, making it available for access and caching in Alluxio, and therefore it in Trino.
@@ -542,8 +541,8 @@ External databases can be added to Walden by [connecting them to Trino](https://
 
 This strategy allows using both Trino and Superset to interact with the external data. However, some data types (such as GIS geometry columns) may not work well with Trino. In those cases you can instead connect Superset to the external database directly as described in the next section below.
 
-1. Uncomment and edit the `custom_catalogs` setting in your `values.yaml`, then apply the changes with `deploy.sh`. This block should have the content of a `.properties` file for [the Trino connector(s) you want](https://trino.io/docs/current/connector.html). The resulting Trino Catalog name will be the key of the entry in the map.
-2. After running `deploy.sh`, restart the `trino-*` pods manually for the change to take effect.
+1. Create a separate Kubernetes `ConfigMap` named `trino-catalog-extra` in the `walden` namespace. This `ConfigMap` should contain one or more `.properties` files for each [Trino connector](https://trino.io/docs/current/connector.html) that you want.
+2. If Walden is already deployed, restart the `trino-*` pods manually for the change to take effect.
     ```
     $ kubectl delete pod -n walden trino-coordinator-xxxx-yyyy trino-worker-xxxx-yyyy
     ```
@@ -653,26 +652,24 @@ kubectl create secret -n walden docker-registry regcred --docker-server=https://
 kubectl apply -f kube-build/templates/kaniko-devserver.yaml
 ```
 
-After building/pushing new release images, update the tags in `values-default.yaml`.
+After building/pushing new release images, update the tags for the affected `image_*` defaults in [`tf/variables.tf`](tf/variables.tf).
 
 ### Deploying with custom images
 
 Walden can be deployed with custom images from your registry/organization.
 
-1. Copy `values-default.yaml`, then edit the settings under the `image` section:
-    - A custom registry/organization can be assigned using the `image.docker_org` setting
-    - Custom tags for individual images can be assigned using `image.*_tag` settings
+1. Create your own `terraform.tfvars` file with custom overrides for the `image_*` values listed under [`tf/variables.tf`](tf/variables.tf)
 2. Build and push images: Run `docker/*/build.sh` and `docker/*/push.sh`
-3. Deploy using custom images: Run `kube/deploy.sh values-mycopy.yaml`
+3. Deploy using custom images: Run `tf apply` under the `tf/` directory
 
 ### Deploying more MinIO nodes
 
 MinIO must be deployed with at least four nodes, which is the default number used by Walden.
-If you'd like to deploy more MinIO nodes, edit the `minio.replicas` setting in the `values.yaml` that you pass to `deploy.sh`.
+If you'd like to deploy more MinIO nodes, create a `terraform.tfvars` file with a custom override of the `minio_replicas` setting, then apply using `tf apply` under the `tf/` directory.
 
 ### Deploying MinIO on alternate architectures
 
 The MinIO images are multi-arch and so can be configured to run on nodes with non-`amd64` architectures.
 In our case, we have a mixed-architecture cluster where several `arm64` Raspberry Pis provide local storage, making them a convenient place for running the MinIO pods.
-To deploy with MinIO nodes on a different architecture, edit the `minio.arch` setting in the `values.yaml` that you pass to `deploy.sh`.
+To deploy with MinIO nodes on a different architecture, edit the `minio_arch` setting in your `terraform.tfvars` file.
 Note that we do not support custom architectures for the `walden-*` images themselves, as the underlying software doesn't deal with it well.
