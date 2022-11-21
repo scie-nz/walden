@@ -1,12 +1,13 @@
 # These are the default settings for starting a new Walden instance.
 # To customize these options:
-# 1. Make a copy of this file
-# 2. Edit the copy
-# 3. Deploy with "./deploy.sh <myvalues.yaml>"
+# 1. Create a 'terraform.tfvars'
+# 2. Add rows to 'terraform.tfvars' for any overrides: varname = varvalue
+# 3. Deploy with 'tf apply'
 
 variable "image_alluxio" {
   type = string
   description = "Stick with a server version matching the client library version in Trino"
+  # https://hub.docker.com/r/alluxio/alluxio/tags
   default = "docker.io/alluxio/alluxio:2.7.3"
 }
 
@@ -18,18 +19,27 @@ variable "image_busybox" {
 
 variable "image_minio" {
   type = string
-  default = "docker.io/minio/minio:RELEASE.2022-05-08T23-50-31Z"
+  # https://hub.docker.com/r/minio/minio/tags
+  default = "docker.io/minio/minio:RELEASE.2022-11-17T23-20-09Z"
 }
 
 variable "image_postgres" {
   type = string
   description = "Changes to the Postgres major version require manually upgrading the on-disk data."
-  default = "docker.io/library/postgres:14.1"
+  # https://hub.docker.com/r/_/postgres/tags
+  default = "docker.io/library/postgres:15.1-bullseye"
 }
 
 variable "image_redis" {
   type = string
-  default = "docker.io/library/redis:7.0.0-bullseye"
+  # https://hub.docker.com/_/redis/tags
+  default = "docker.io/library/redis:7.0.5-bullseye"
+}
+
+variable "image_trino" {
+  type = string
+  # https://hub.docker.com/r/trinodb/trino/tags
+  default = "docker.io/trinodb/trino:403"
 }
 
 # The latest release versions for Walden images.
@@ -42,13 +52,10 @@ variable "image_metastore" {
   type = string
   default = "docker.io/scienz/walden-metastore:2022.08.01"
 }
+# TODO(nick): try a new image with 2.0
 variable "image_superset" {
   type = string
   default = "docker.io/scienz/walden-superset:2022.05.11"
-}
-variable "image_trino" {
-  type = string
-  default = "docker.io/scienz/walden-trino:2022.05.11b"
 }
 
 # DEVSERVER
@@ -91,6 +98,7 @@ variable "alluxio_nfs_path" {
   default = ""
   description = "a directory path, or empty to disable"
 }
+# TODO(nick): remove in favor of users creating their own services if they need this
 variable "alluxio_external_ips" {
   type = list(string)
   default = []
@@ -128,6 +136,7 @@ variable "minio_mem_limit" {
   default = "512M"
   description = "The memory limit for each Minio pod. Minio recommends 8GB for pods with up to 1TB storage/pod, or 16GB for up to 10TB storage/pod. We start with very low values, increase to fit your system and workloads."
 }
+# TODO(nick): remove in favor of users creating their own services if they need this
 variable "minio_external_ips" {
   type = list(string)
   default = []
@@ -161,6 +170,7 @@ variable "superset_mem_limit_worker" {
   default = "1G"
   description = "The memory limits for each the Superset worker pod. We start with very low values, increase to fit your system and workloads."
 }
+# TODO(nick): remove in favor of users creating their own services if they need this
 variable "superset_external_ips" {
   type = list(string)
   default = []
@@ -271,7 +281,7 @@ variable "trino_coordinator_mem_limit" {
 variable "trino_worker_mem_limit" {
   type = string
   default = "2Gi"
-  description = "The memory limits for the Trino coordinator pod. We start with very low values, increase to fit your system and workloads. Note that Alluxio workers are colocated with Trino workers, so the sum total of alluxio_mem_cache and trino_mem_limit_worker must stay below total node memory."
+  description = "The memory limits for the Trino coordinator pod. We start with very low values, increase to fit your system and workloads. Note that Alluxio workers are colocated with Trino workers, so the sum total of alluxio_mem_cache (if Alluxio is enabled) and trino_mem_limit_worker must stay below total node memory."
 }
 variable "trino_coordinator_mem_jvm_heap" {
   type = string
@@ -283,11 +293,13 @@ variable "trino_worker_mem_jvm_heap" {
   default = "1536M"
   description = "The value of '-Xmx' provided to the JVM in workers"
 }
+# TODO(nick): remove
 variable "trino_worker_disk_spill" {
   type = string
   default = "25Gi"
   description = "Disk storage for 'spill' storage as configured below"
 }
+# TODO(nick): remove
 variable "trino_worker_disk_cache" {
   type = string
   default = "10Gi"
@@ -298,6 +310,7 @@ variable "trino_worker_mem_cache" {
   default = "1Gi"
   description = "RAM storage for cache used for Hive catalogs in each Trino worker."
 }
+# TODO(nick): remove in favor of users creating their own services if they need this
 variable "trino_external_ips" {
   type = list(string)
   default = []
@@ -323,11 +336,13 @@ variable "trino_config_memory_heap_headroom_per_node" {
   default = "512MB"
   description = "memory.heap-headroom-per-node (default: trino_mem_jvm_heap_worker * 0.3)"
 }
+# TODO(nick): remove
 variable "trino_config_max_spill_per_node" {
   type = string
   default = "25GB"
   description = "disk space, default: 100GB"
 }
+# TODO(nick): remove
 variable "trino_config_query_max_spill_per_node" {
   type = string
   default = "10GB"

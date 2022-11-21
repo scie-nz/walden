@@ -45,14 +45,6 @@ resource "kubernetes_deployment" "devserver" {
             "cd ~ && sleep infinity",
           ]
           env {
-            name = "HIVE_METASTORE_HOST"
-            value = "metastore"
-          }
-          env {
-            name = "HIVE_METASTORE_PORT"
-            value = "9083"
-          }
-          env {
             name = "MINIO_ACCESS_KEY_ID"
             value_from {
               secret_key_ref {

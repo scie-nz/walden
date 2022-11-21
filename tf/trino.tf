@@ -75,6 +75,9 @@ resource "kubernetes_config_map" "trino_config" {
     "log.properties" = file("configs/trino_log.properties")
     "node.properties" = file("configs/trino_node.properties")
     "password-authenticator.properties" = file("configs/trino_password-authenticator.properties")
+    "password.db" = <<-EOT
+walden:${bcrypt(random_password.trino_admin_pass.result)}
+EOT
     "postgres.properties" = ""
   }
 }
@@ -145,48 +148,17 @@ resource "kubernetes_deployment" "trino_coordinator" {
             "/bin/bash",
             "-c",
             <<-EOT
-mkdir -p /trino-server/etc/catalog &&
-cp -v /tmp/roconf/* /trino-server/etc &&
-cp -v /tmp/rocatalog*/* /trino-server/etc/catalog &&
-mv /trino-server/etc/jvm-coordinator.config /trino-server/etc/jvm.config &&
-htpasswd -c -b -B -C 10 /trino-server/etc/password.db "$TRINO_USER" "$TRINO_PASSWORD" &&
-export WORKER_NODE_ID="$${HOSTNAME}_$(uuidgen --random | sed s/-.*//g)" && env &&
-/trino-server/bin/launcher run -v
+mkdir -p /etc/trino/catalog &&
+cp -v /tmp/roconf/* /etc/trino &&
+cp -v /tmp/rocatalog*/* /etc/trino/catalog &&
+mv -v /etc/trino/jvm-coordinator.config /etc/trino/jvm.config &&
+export WORKER_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
+/usr/lib/trino/bin/run-trino -v
 EOT
           ]
           env {
             name = "CONFIG_COORDINATOR"
             value = "true"
-          }
-          env {
-            name = "HIVE_METASTORE_HOST"
-            value = "metastore"
-          }
-          env {
-            name = "HIVE_METASTORE_PORT"
-            value = "9083"
-          }
-          env {
-            name = "TRINO_USER"
-            value_from {
-              secret_key_ref {
-                key = "user"
-                name = "trino-admin"
-              }
-            }
-          }
-          env {
-            name = "TRINO_PASSWORD"
-            value_from {
-              secret_key_ref {
-                key = "pass"
-                name = "trino-admin"
-              }
-            }
-          }
-          env {
-            name = "CONFIG_JVM_HEAP"
-            value = var.trino_coordinator_mem_jvm_heap
           }
           env_from {
             # Custom environment variables to include in the trino nodes.
@@ -197,6 +169,16 @@ EOT
             }
           }
           image = var.image_trino
+          liveness_probe {
+            failure_threshold = 6
+            initial_delay_seconds = 20
+            period_seconds = 10
+            http_get {
+              path = "/v1/info"
+              port = "http"
+            }
+            timeout_seconds = 5
+          }
           name = "trino-coordinator"
           port {
             container_port = 8080
@@ -217,6 +199,16 @@ EOT
               name = port.key
             }
           }
+          readiness_probe {
+            failure_threshold = 6
+            initial_delay_seconds = 20
+            period_seconds = 10
+            http_get {
+              path = "/v1/info"
+              port = "http"
+            }
+            timeout_seconds = 5
+          }
           resources {
             limits = {
               memory = var.trino_coordinator_mem_limit
@@ -235,11 +227,11 @@ EOT
             name = "catalog-extra"
           }
           volume_mount {
-            mount_path = "/trino-server/etc"
+            mount_path = "/etc/trino"
             name = "etc"
           }
           volume_mount {
-            mount_path = "/data"
+            mount_path = "/data/trino"
             name = "data"
           }
         }
@@ -290,6 +282,7 @@ EOT
   }
 }
 
+# TODO(nick): deployment with emptyDir for alluxio-cache?
 resource "kubernetes_stateful_set" "trino_worker" {
   metadata {
     labels = {
@@ -318,15 +311,15 @@ resource "kubernetes_stateful_set" "trino_worker" {
           command = [
             "/bin/bash",
             "-c",
-                <<-EOT
-mkdir -p /trino-server/etc/catalog &&
+            <<-EOT
+mkdir -p /etc/trino/catalog &&
 mkdir -p /diskcache/hive /memcache/hive &&
-cp -v /tmp/roconf/* /trino-server/etc &&
-cp -v /tmp/rocatalog/* /trino-server/etc/catalog &&
-mv /trino-server/etc/jvm-worker.config /trino-server/etc/jvm.config &&
-export WORKER_NODE_ID="$${HOSTNAME}_$(uuidgen --random | sed s/-.*//g)" &&
+cp -v /tmp/roconf/* /etc/trino &&
+cp -v /tmp/rocatalog*/* /etc/trino/catalog &&
+mv -v /etc/trino/jvm-worker.config /etc/trino/jvm.config &&
+export WORKER_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
 ${var.trino_worker_startup_command} &&
-/trino-server/bin/launcher run -v
+/usr/lib/trino/bin/run-trino -v
 EOT
             ,
           ]
@@ -334,19 +327,17 @@ EOT
             name = "CONFIG_COORDINATOR"
             value = "false"
           }
-          env {
-            name = "HIVE_METASTORE_HOST"
-            value = "metastore"
-          }
-          env {
-            name = "HIVE_METASTORE_PORT"
-            value = "9083"
-          }
-          env {
-            name = "CONFIG_JVM_HEAP"
-            value = var.trino_worker_mem_jvm_heap
-          }
           image = var.image_trino
+          liveness_probe {
+            failure_threshold = 6
+            initial_delay_seconds = 20
+            period_seconds = 10
+            http_get {
+              path = "/v1/info"
+              port = "http"
+            }
+            timeout_seconds = 5
+          }
           name = "trino-worker"
           port {
             container_port = 8080
@@ -367,6 +358,16 @@ EOT
               name = port.key
             }
           }
+          readiness_probe {
+            failure_threshold = 6
+            initial_delay_seconds = 20
+            period_seconds = 10
+            http_get {
+              path = "/v1/info"
+              port = "http"
+            }
+            timeout_seconds = 5
+          }
           resources {
             limits = {
               memory = var.trino_worker_mem_limit
@@ -381,7 +382,7 @@ EOT
             name = "trino-catalog"
           }
           volume_mount {
-            mount_path = "/trino-server/etc"
+            mount_path = "/etc/trino"
             name = "trino-etc"
           }
           volume_mount {
