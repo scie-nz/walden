@@ -108,7 +108,6 @@ resource "kubernetes_service" "superset" {
     namespace = "walden"
   }
   spec {
-    external_ips = var.superset_external_ips
     port {
       name = "http"
       port = 80

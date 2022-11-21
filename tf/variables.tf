@@ -70,7 +70,7 @@ variable "devserver_enabled" {
 
 variable "alluxio_enabled" {
   type = bool
-  default = true
+  default = false
   description = "Enables Alluxio for additional managed data sources, along with caching of those sources. By default, Trino's Hive cache is often sufficient, but enabling Alluxio may be useful for supporting additional networked volume types that are not natively supported with Trino/Hive."
 }
 variable "alluxio_root_mount" {
@@ -82,27 +82,6 @@ variable "alluxio_mem_cache" {
   type = string
   default = "1G"
   description = "The size of the ramdisk to use as cache in each Alluxio/Trino worker. This can greatly speed up repeat access to data via Alluxio. This is allocated as a ramdisk on startup, and is 'used' even if the workers are idle. Note that Alluxio workers are colocated with Trino workers, so the sum total of alluxio.mem_cache and trino.mem_limit_worker must stay below total node memory."
-}
-variable "alluxio_disk_cache" {
-  type = string
-  default = "10G"
-  description = "Disk storage for cache in each Alluxio/Trino worker. This can greatly speed up repeat access to data via Alluxio."
-}
-variable "alluxio_nfs_server" {
-  type = string
-  default = ""
-  description = "Enabling an NFS volume mount (at /mnt/nfs) in the Alluxio pods. You can add the volume to Alluxio by either assigning root_mount above to /mnt/nfs, or via the alluxio CLI 'mount' command. Should be an IP or hostname, or empty to disable"
-}
-variable "alluxio_nfs_path" {
-  type = string
-  default = ""
-  description = "a directory path, or empty to disable"
-}
-# TODO(nick): remove in favor of users creating their own services if they need this
-variable "alluxio_external_ips" {
-  type = list(string)
-  default = []
-  description = "External IPs for the Alluxio service"
 }
 
 # MINIO
@@ -136,12 +115,6 @@ variable "minio_mem_limit" {
   default = "512M"
   description = "The memory limit for each Minio pod. Minio recommends 8GB for pods with up to 1TB storage/pod, or 16GB for up to 10TB storage/pod. We start with very low values, increase to fit your system and workloads."
 }
-# TODO(nick): remove in favor of users creating their own services if they need this
-variable "minio_external_ips" {
-  type = list(string)
-  default = []
-  description = "External IPs for the Minio service"
-}
 
 # SUPERSET
 
@@ -169,12 +142,6 @@ variable "superset_mem_limit_worker" {
   type = string
   default = "1G"
   description = "The memory limits for each the Superset worker pod. We start with very low values, increase to fit your system and workloads."
-}
-# TODO(nick): remove in favor of users creating their own services if they need this
-variable "superset_external_ips" {
-  type = list(string)
-  default = []
-  description = "External IPs for the Superset service"
 }
 
 variable "superset_postgres_internal" {
@@ -293,28 +260,10 @@ variable "trino_worker_mem_jvm_heap" {
   default = "1536M"
   description = "The value of '-Xmx' provided to the JVM in workers"
 }
-# TODO(nick): remove
-variable "trino_worker_disk_spill" {
-  type = string
-  default = "25Gi"
-  description = "Disk storage for 'spill' storage as configured below"
-}
-# TODO(nick): remove
-variable "trino_worker_disk_cache" {
-  type = string
-  default = "10Gi"
-  description = "Disk storage for cache used for Hive catalogs in each Trino worker. This can greatly speed up repeat access to remote network volumes."
-}
 variable "trino_worker_mem_cache" {
   type = string
   default = "1Gi"
   description = "RAM storage for cache used for Hive catalogs in each Trino worker."
-}
-# TODO(nick): remove in favor of users creating their own services if they need this
-variable "trino_external_ips" {
-  type = list(string)
-  default = []
-  description = "External IPs for the Trino UI service"
 }
 
 # Settings for trino_config.properties
@@ -335,17 +284,6 @@ variable "trino_config_memory_heap_headroom_per_node" {
   type = string
   default = "512MB"
   description = "memory.heap-headroom-per-node (default: trino_mem_jvm_heap_worker * 0.3)"
-}
-# TODO(nick): remove
-variable "trino_config_max_spill_per_node" {
-  type = string
-  default = "25GB"
-  description = "disk space, default: 100GB"
-}
-# TODO(nick): remove
-variable "trino_config_query_max_spill_per_node" {
-  type = string
-  default = "10GB"
 }
 
 variable "trino_worker_startup_command" {

@@ -40,6 +40,12 @@ EOT
 
     "tpch.properties" = <<-EOT
 connector.name=tpch
+tpch.splits-per-node=4
+EOT
+
+    "tpcds.properties" = <<-EOT
+connector.name=tpcds
+tpcds.splits-per-node=4
 EOT
   }
 }
@@ -56,8 +62,6 @@ resource "kubernetes_config_map" "trino_config" {
         query_max_memory_per_node = var.trino_config_query_max_memory_per_node,
         query_max_memory = var.trino_config_query_max_memory,
         memory_heap_headroom_per_node = var.trino_config_memory_heap_headroom_per_node,
-        max_spill_per_node = var.trino_config_max_spill_per_node,
-        query_max_spill_per_node = var.trino_config_query_max_spill_per_node,
       }
     )
     "jvm-coordinator.config" = templatefile(
@@ -91,7 +95,6 @@ resource "kubernetes_service" "trino" {
     namespace = "walden"
   }
   spec {
-    external_ips = var.trino_external_ips
     port {
       name = "http"
       port = 80
@@ -216,23 +219,23 @@ EOT
           }
           volume_mount {
             mount_path = "/tmp/roconf"
-            name = "config"
+            name = "trino-config"
           }
           volume_mount {
             mount_path = "/tmp/rocatalog"
-            name = "catalog"
+            name = "trino-catalog"
           }
           volume_mount {
             mount_path = "/tmp/rocatalog-extra"
-            name = "catalog-extra"
+            name = "trino-catalog-extra"
           }
           volume_mount {
             mount_path = "/etc/trino"
-            name = "etc"
+            name = "trino-etc"
           }
           volume_mount {
             mount_path = "/data/trino"
-            name = "data"
+            name = "trino-data"
           }
         }
         node_selector = var.trino_coordinator_node_selector
@@ -254,36 +257,35 @@ EOT
           config_map {
             name = "trino-config"
           }
-          name = "config"
+          name = "trino-config"
         }
         volume {
           config_map {
             name = "trino-catalog"
           }
-          name = "catalog"
+          name = "trino-catalog"
         }
         volume {
           config_map {
             name = "trino-catalog-extra"
             optional = true
           }
-          name = "catalog-extra"
+          name = "trino-catalog-extra"
         }
         volume {
           empty_dir {}
-          name = "etc"
+          name = "trino-etc"
         }
         volume {
           empty_dir {}
-          name = "data"
+          name = "trino-data"
         }
       }
     }
   }
 }
 
-# TODO(nick): deployment with emptyDir for alluxio-cache?
-resource "kubernetes_stateful_set" "trino_worker" {
+resource "kubernetes_deployment" "trino_worker" {
   metadata {
     labels = {
       app = "trino-worker"
@@ -292,14 +294,12 @@ resource "kubernetes_stateful_set" "trino_worker" {
     namespace = "walden"
   }
   spec {
-    pod_management_policy = "Parallel"
     replicas = var.trino_worker_replicas
     selector {
       match_labels = {
         app = "trino-worker"
       }
     }
-    service_name = "trino-worker"
     template {
       metadata {
         labels = {
@@ -312,8 +312,7 @@ resource "kubernetes_stateful_set" "trino_worker" {
             "/bin/bash",
             "-c",
             <<-EOT
-mkdir -p /etc/trino/catalog &&
-mkdir -p /diskcache/hive /memcache/hive &&
+mkdir -p /etc/trino/catalog /memcache/hive &&
 cp -v /tmp/roconf/* /etc/trino &&
 cp -v /tmp/rocatalog*/* /etc/trino/catalog &&
 mv -v /etc/trino/jvm-worker.config /etc/trino/jvm.config &&
@@ -382,20 +381,20 @@ EOT
             name = "trino-catalog"
           }
           volume_mount {
+            mount_path = "/tmp/rocatalog-extra"
+            name = "trino-catalog-extra"
+          }
+          volume_mount {
             mount_path = "/etc/trino"
             name = "trino-etc"
           }
           volume_mount {
+            mount_path = "/data/trino"
+            name = "trino-data"
+          }
+          volume_mount {
             mount_path = "/memcache"
             name = "trino-memcache"
-          }
-          volume_mount {
-            mount_path = "/diskcache"
-            name = "trino-cache"
-          }
-          volume_mount {
-            mount_path = "/data"
-            name = "storage"
           }
           dynamic "volume_mount" {
             for_each = var.alluxio_enabled ? ["_"] : []
@@ -435,7 +434,7 @@ EOT
             }
             env {
               name = "ALLUXIO_MASTER_MOUNT_TABLE_ROOT_UFS"
-              value = "s3://alluxio/"
+              value = var.alluxio_root_mount
             }
             env {
               name = "AWS_ACCESS_KEY_ID"
@@ -497,10 +496,6 @@ EOT
               mount_path = "/dev/shm"
               name = "alluxio-memcache"
             }
-            volume_mount {
-              mount_path = "/mnt/cache"
-              name = "alluxio-cache"
-            }
           }
         }
         dynamic "container" {
@@ -532,7 +527,7 @@ EOT
             }
             env {
               name = "ALLUXIO_MASTER_MOUNT_TABLE_ROOT_UFS"
-              value = "s3://alluxio/"
+              value = var.alluxio_root_mount
             }
             env {
               name = "AWS_ACCESS_KEY_ID"
@@ -598,10 +593,6 @@ EOT
               mount_path = "/dev/shm"
               name = "alluxio-memcache"
             }
-            volume_mount {
-              mount_path = "/mnt/cache"
-              name = "alluxio-cache"
-            }
           }
         }
         dynamic "init_container" {
@@ -653,8 +644,19 @@ EOT
           name = "trino-catalog"
         }
         volume {
+          config_map {
+            name = "trino-catalog-extra"
+            optional = true
+          }
+          name = "trino-catalog-extra"
+        }
+        volume {
           empty_dir {}
           name = "trino-etc"
+        }
+        volume {
+          empty_dir {}
+          name = "trino-data"
         }
         volume {
           empty_dir {
@@ -675,57 +677,9 @@ EOT
           content {
             empty_dir {
               medium = "Memory"
-              size_limit = "1Gi"
+              size_limit = var.alluxio_mem_cache
             }
             name = "alluxio-memcache"
-          }
-        }
-      }
-    }
-    volume_claim_template {
-      metadata {
-        name = "storage"
-      }
-      spec {
-        access_modes = [
-          "ReadWriteOnce",
-        ]
-        resources {
-          requests = {
-            storage = var.trino_worker_disk_spill
-          }
-        }
-      }
-    }
-    volume_claim_template {
-      metadata {
-        name = "trino-cache"
-      }
-      spec {
-        access_modes = [
-          "ReadWriteOnce",
-        ]
-        resources {
-          requests = {
-            storage = var.trino_worker_disk_cache
-          }
-        }
-      }
-    }
-    dynamic "volume_claim_template" {
-      for_each = var.alluxio_enabled ? ["_"] : []
-      content {
-        metadata {
-          name = "alluxio-cache"
-        }
-        spec {
-          access_modes = [
-            "ReadWriteOnce",
-          ]
-          resources {
-            requests = {
-              storage = "10Gi"
-            }
           }
         }
       }

@@ -2,33 +2,21 @@ provider "kubernetes" {
   experiments {
     manifest_resource = true
   }
-  config_path = "~/.kube/config-nick"
-}
-
-provider "helm" {
-  kubernetes {
-    config_path = "~/.kube/config-nick"
-  }
+  config_path = "~/.kube/config-walden"
 }
 
 terraform {
   required_providers {
-    helm = {
-      source = "hashicorp/helm"
-      version = "2.6.0"
-    }
-
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "2.13.1"
+      version = "2.16.0"
     }
-
     random = {
       source = "hashicorp/random"
-      version = "3.3.2"
+      version = "3.4.3"
     }
   }
-  required_version = ">= 1.2.6"
+  required_version = ">= 1.3.0"
 }
 
 resource "kubernetes_namespace" "walden" {

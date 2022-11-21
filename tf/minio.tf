@@ -28,7 +28,6 @@ resource "kubernetes_service" "minio" {
     namespace = "walden"
   }
   spec {
-    external_ips = var.minio_external_ips
     port {
       name = "s3"
       port = 9000

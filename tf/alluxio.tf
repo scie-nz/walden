@@ -13,9 +13,8 @@ resource "kubernetes_config_map" "alluxio" {
     "ALLUXIO_JOB_MASTER_JAVA_OPTS" = "-Dalluxio.master.hostname=$${ALLUXIO_MASTER_HOSTNAME}"
     "ALLUXIO_JOB_WORKER_JAVA_OPTS" = "-Dalluxio.worker.hostname=$${ALLUXIO_WORKER_HOSTNAME} -Dalluxio.job.worker.rpc.port=30001 -Dalluxio.job.worker.data.port=30002 -Dalluxio.job.worker.web.port=30003"
     "ALLUXIO_MASTER_JAVA_OPTS" = "-Dalluxio.master.hostname=$${ALLUXIO_MASTER_HOSTNAME}"
-    "ALLUXIO_WORKER_JAVA_OPTS" = "-Dalluxio.worker.hostname=$${ALLUXIO_WORKER_HOSTNAME} -Dalluxio.worker.rpc.port=29999 -Dalluxio.worker.web.port=30000 -Dalluxio.worker.data.server.domain.socket.address=/opt/domain -Dalluxio.worker.data.server.domain.socket.as.uuid=true -Dalluxio.worker.container.hostname=$${ALLUXIO_WORKER_CONTAINER_HOSTNAME} -Dalluxio.worker.ramdisk.size=1G -Dalluxio.worker.tieredstore.levels=2 -Dalluxio.worker.tieredstore.level0.alias=MEM -Dalluxio.worker.tieredstore.level0.dirs.path=/dev/shm -Dalluxio.worker.tieredstore.level1.alias=SSD -Dalluxio.worker.tieredstore.level1.dirs.mediumtype=SSD -Dalluxio.worker.tieredstore.level1.dirs.path=/mnt/cache -Dalluxio.worker.tieredstore.level1.dirs.quota=10G"
+    "ALLUXIO_WORKER_JAVA_OPTS" = "-Dalluxio.worker.hostname=$${ALLUXIO_WORKER_HOSTNAME} -Dalluxio.worker.rpc.port=29999 -Dalluxio.worker.web.port=30000 -Dalluxio.worker.data.server.domain.socket.address=/opt/domain -Dalluxio.worker.data.server.domain.socket.as.uuid=true -Dalluxio.worker.container.hostname=$${ALLUXIO_WORKER_CONTAINER_HOSTNAME} -Dalluxio.worker.ramdisk.size=${var.alluxio_mem_cache} -Dalluxio.worker.tieredstore.levels=1 -Dalluxio.worker.tieredstore.level0.alias=MEM -Dalluxio.worker.tieredstore.level0.dirs.path=/dev/shm"
     "ALLUXIO_WORKER_TIEREDSTORE_LEVEL0_DIRS_PATH" = "/dev/shm"
-    "ALLUXIO_WORKER_TIEREDSTORE_LEVEL1_DIRS_PATH" = "/mnt/cache"
   }
 }
 
@@ -29,7 +28,6 @@ resource "kubernetes_service" "alluxio_web" {
     namespace = "walden"
   }
   spec {
-    external_ips = var.alluxio_external_ips
     port {
       name = "web"
       port = 80
@@ -130,7 +128,7 @@ resource "kubernetes_stateful_set" "alluxio_leader" {
           }
           env {
             name = "ALLUXIO_MASTER_MOUNT_TABLE_ROOT_UFS"
-            value = "s3://alluxio/"
+            value = var.alluxio_root_mount
           }
           env {
             name = "AWS_ACCESS_KEY_ID"
@@ -208,7 +206,7 @@ resource "kubernetes_stateful_set" "alluxio_leader" {
           }
           env {
             name = "ALLUXIO_MASTER_MOUNT_TABLE_ROOT_UFS"
-            value = "s3://alluxio/"
+            value = var.alluxio_root_mount
           }
           env {
             name = "AWS_ACCESS_KEY_ID"

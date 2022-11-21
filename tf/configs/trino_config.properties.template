@@ -19,18 +19,6 @@ memory.heap-headroom-per-node=${memory_heap_headroom_per_node}
 # Default: unrestricted
 #query.max-memory-per-task=4000MB
 
-# TODO(nick): consider disabling spill and the /data PV in general, instead pointing node.data-dir to an emptyDir volume
-# "spill"/swap disk storage for intermediate storage of queries
-spill-enabled=true
-spill-compression-enabled=true
-# Directory where any spilled content is written.
-# This is on local disk - we put it in a persistent volume.
-spiller-spill-path=/data/trino/spill
-# Max spill space to be used by all queries on a single node.
-max-spill-per-node=${max_spill_per_node}
-# Max spill space to be used by a single query on a single node.
-query-max-spill-per-node=${query_max_spill_per_node}
-
 # Increase caps on row size 8x. This may reduce errors like
 # "PageTooLargeException: Remote page is too large" when handling large arrays.
 # See also https://github.com/trinodb/trino/issues/10292
