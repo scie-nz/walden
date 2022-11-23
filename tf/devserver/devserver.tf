@@ -1,8 +1,7 @@
 resource "kubernetes_persistent_volume_claim" "devserver" {
-  count = var.devserver_enabled ? 1 : 0
   metadata {
     name = "devserver"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     access_modes = [
@@ -17,10 +16,9 @@ resource "kubernetes_persistent_volume_claim" "devserver" {
 }
 
 resource "kubernetes_deployment" "devserver" {
-  count = var.devserver_enabled ? 1 : 0
   metadata {
     name = "devserver"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     selector {
@@ -49,7 +47,7 @@ resource "kubernetes_deployment" "devserver" {
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
@@ -58,7 +56,7 @@ resource "kubernetes_deployment" "devserver" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
@@ -67,7 +65,7 @@ resource "kubernetes_deployment" "devserver" {
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "trino-admin"
+                name = var.trino_secret_name
               }
             }
           }
@@ -76,7 +74,7 @@ resource "kubernetes_deployment" "devserver" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "trino-admin"
+                name = var.trino_secret_name
               }
             }
           }
@@ -87,7 +85,7 @@ resource "kubernetes_deployment" "devserver" {
               optional = true
             }
           }
-          image = var.image_devserver
+          image = var.image
           name = "devserver"
           resources {
             limits = {

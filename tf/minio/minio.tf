@@ -1,31 +1,31 @@
-resource "random_password" "minio_admin_pass" {
-  count = var.minio_password == "" ? 1 : 0
+resource "random_password" "admin_pass" {
+  count = var.password == "" ? 1 : 0
   length = 32
   special = false
 }
 
-resource "kubernetes_secret" "minio_admin" {
+resource "kubernetes_secret" "minio" {
   metadata {
     labels = {
-      app = "minio"
+      app = var.name
     }
-    name = "minio-admin"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   type = "Opaque"
   data = {
-    pass = var.minio_password == "" ? random_password.minio_admin_pass[0].result : var.minio_password
-    user = sensitive(var.minio_username)
+    pass = var.password == "" ? random_password.admin_pass[0].result : var.password
+    user = sensitive(var.username)
   }
 }
 
 resource "kubernetes_service" "minio" {
   metadata {
     labels = {
-      app = "minio"
+      app = var.name
     }
-    name = "minio"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   spec {
     port {
@@ -39,7 +39,7 @@ resource "kubernetes_service" "minio" {
       target_port = "console"
     }
     selector = {
-      app = "minio"
+      app = var.name
     }
   }
 }
@@ -47,10 +47,10 @@ resource "kubernetes_service" "minio" {
 resource "kubernetes_service" "minio_headless" {
   metadata {
     labels = {
-      app = "minio"
+      app = var.name
     }
-    name = "minio-headless"
-    namespace = "walden"
+    name = "${var.name}-headless"
+    namespace = var.namespace
   }
   spec {
     cluster_ip = "None"
@@ -60,7 +60,7 @@ resource "kubernetes_service" "minio_headless" {
       target_port = "s3"
     }
     selector = {
-      app = "minio"
+      app = var.name
     }
   }
 }
@@ -68,23 +68,23 @@ resource "kubernetes_service" "minio_headless" {
 resource "kubernetes_stateful_set" "minio" {
   metadata {
     labels = {
-      app = "minio"
+      app = var.name
     }
-    name = "minio"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   spec {
-    replicas = var.minio_replicas
+    replicas = var.replicas
     selector {
       match_labels = {
-        app = "minio"
+        app = var.name
       }
     }
     service_name = "minio-headless"
     template {
       metadata {
         labels = {
-          app = "minio"
+          app = var.name
         }
       }
       spec {
@@ -96,7 +96,7 @@ resource "kubernetes_stateful_set" "minio" {
                   key = "app"
                   operator = "In"
                   values = [
-                    "minio",
+                    var.name,
                   ]
                 }
               }
@@ -115,7 +115,7 @@ resource "kubernetes_stateful_set" "minio" {
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "minio-admin"
+                name = var.name
               }
             }
           }
@@ -124,7 +124,7 @@ resource "kubernetes_stateful_set" "minio" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "minio-admin"
+                name = var.name
               }
             }
           }
@@ -138,7 +138,7 @@ resource "kubernetes_stateful_set" "minio" {
           }
           env {
             name = "MINIO_MAX_HOSTNUM"
-            value = "${var.minio_replicas - 1}"
+            value = "${var.replicas - 1}"
           }
           env {
             name = "MINIO_UPDATE"
@@ -152,7 +152,7 @@ resource "kubernetes_stateful_set" "minio" {
               optional = true
             }
           }
-          image = var.image_minio
+          image = var.image
           name = "minio"
           port {
             container_port = 9000
@@ -164,7 +164,7 @@ resource "kubernetes_stateful_set" "minio" {
           }
           resources {
             limits = {
-              memory = var.minio_mem_limit
+              memory = var.mem_limit
             }
           }
           volume_mount {
@@ -173,7 +173,7 @@ resource "kubernetes_stateful_set" "minio" {
           }
         }
         node_selector = {
-          "kubernetes.io/arch" = var.minio_arch
+          "kubernetes.io/arch" = var.arch
         }
         security_context {
           fs_group = 65534
@@ -192,7 +192,7 @@ resource "kubernetes_stateful_set" "minio" {
         ]
         resources {
           requests = {
-            storage = "1Gi"
+            storage = var.storage
           }
         }
       }

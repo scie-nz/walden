@@ -1,31 +1,12 @@
-resource "random_password" "superset_redis_pass" {
-  length = 32
-  special = false
-}
-
 resource "random_password" "superset_key" {
   length = 32
   special = false
 }
 
 resource "random_password" "superset_admin_pass" {
-  count = var.superset_password == "" ? 1 : 0
+  count = var.password == "" ? 1 : 0
   length = 32
   special = false
-}
-
-resource "kubernetes_secret" "superset_redis" {
-  metadata {
-    labels = {
-      app = "superset-redis"
-    }
-    name = "superset-redis"
-    namespace = "walden"
-  }
-  type = "Opaque"
-  data = {
-    pass = random_password.superset_redis_pass.result
-  }
 }
 
 resource "kubernetes_secret" "superset_key" {
@@ -34,7 +15,7 @@ resource "kubernetes_secret" "superset_key" {
       app = "superset"
     }
     name = "superset-key"
-    namespace = "walden"
+    namespace = var.namespace
   }
   type = "Opaque"
   data = {
@@ -48,12 +29,12 @@ resource "kubernetes_secret" "superset_admin" {
       app = "superset"
     }
     name = "superset-admin"
-    namespace = "walden"
+    namespace = var.namespace
   }
   type = "Opaque"
   data = {
-    pass = var.superset_password == "" ? random_password.superset_admin_pass[0].result : var.superset_password
-    user = var.superset_username
+    pass = var.password == "" ? random_password.superset_admin_pass[0].result : var.password
+    user = var.username
   }
 }
 
@@ -63,39 +44,18 @@ resource "kubernetes_config_map" "superset" {
       app = "superset"
     }
     name = "superset"
-    namespace = "walden"
+    namespace = var.namespace
   }
   data = {
-    "superset_config.py" = file("configs/superset_config.py")
-    "superset_copy_configs.sh" = file("configs/superset_copy_configs.sh")
+    "superset_config.py" = file("${path.module}/superset_config.py")
+    "superset_copy_configs.sh" = file("${path.module}/superset_copy_configs.sh")
     "superset_datasources.yaml" = templatefile(
-      "configs/superset_datasources.yaml.template",
+      "${path.module}/superset_datasources.yaml.template",
       {
-        extra_datasources = var.superset_extra_datasources,
+        extra_datasources = var.extra_datasources,
       }
     ),
-    "superset_init.sh" = file("configs/superset_init.sh")
-  }
-}
-
-resource "kubernetes_service" "superset_redis" {
-  metadata {
-    labels = {
-      app = "superset-redis"
-    }
-    name = "superset-redis"
-    namespace = "walden"
-  }
-  spec {
-    port {
-      name = "redis"
-      port = 6379
-      target_port = "redis"
-    }
-    selector = {
-      app = "superset-redis"
-    }
-    type = "ClusterIP"
+    "superset_init.sh" = file("${path.module}/superset_init.sh")
   }
 }
 
@@ -105,7 +65,7 @@ resource "kubernetes_service" "superset" {
       app = "superset"
     }
     name = "superset"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     port {
@@ -125,7 +85,7 @@ resource "kubernetes_deployment" "superset_scheduler" {
       app = "superset-scheduler"
     }
     name = "superset-scheduler"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     replicas = 1
@@ -160,35 +120,35 @@ resource "kubernetes_deployment" "superset_scheduler" {
           }
           env {
             name = "REDIS_HOST"
-            value = "superset-redis"
+            value = var.redis_host
           }
           env {
             name = "REDIS_PASSWORD"
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-redis"
+                name = var.redis_secret_name
               }
             }
           }
           env {
             name = "POSTGRES_HOST"
-            value = var.superset_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.superset_postgres_port
+            value = var.postgres_port
           }
           env {
             name = "POSTGRES_DB"
-            value = var.superset_postgres_db
+            value = var.postgres_db
           }
           env {
             name = "POSTGRES_USER"
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -197,7 +157,7 @@ resource "kubernetes_deployment" "superset_scheduler" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -257,18 +217,18 @@ resource "kubernetes_deployment" "superset_scheduler" {
           ]
           env {
             name = "POSTGRES_HOST"
-            value = var.superset_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.superset_postgres_port
+            value = var.postgres_port
           }
           image = var.image_busybox
           name = "wait-for-postgres"
         }
-        node_selector = var.superset_scheduler_node_selector
+        node_selector = var.scheduler_node_selector
         dynamic "toleration" {
-          for_each = var.superset_scheduler_tolerations
+          for_each = var.scheduler_tolerations
           content {
             effect = toleration.effect
             key = toleration.key
@@ -311,7 +271,7 @@ resource "kubernetes_deployment" "superset_worker" {
       app = "superset-worker"
     }
     name = "superset-worker"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     replicas = 1
@@ -346,35 +306,35 @@ resource "kubernetes_deployment" "superset_worker" {
           }
           env {
             name = "REDIS_HOST"
-            value = "superset-redis"
+            value = var.redis_host
           }
           env {
             name = "REDIS_PASSWORD"
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-redis"
+                name = var.redis_secret_name
               }
             }
           }
           env {
             name = "POSTGRES_HOST"
-            value = var.superset_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.superset_postgres_port
+            value = var.postgres_port
           }
           env {
             name = "POSTGRES_DB"
-            value = var.superset_postgres_db
+            value = var.postgres_db
           }
           env {
             name = "POSTGRES_USER"
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -383,7 +343,7 @@ resource "kubernetes_deployment" "superset_worker" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -399,7 +359,7 @@ resource "kubernetes_deployment" "superset_worker" {
           name = "superset"
           resources {
             limits = {
-              memory = "1Gi"
+              memory = var.mem_limit_worker
             }
           }
           volume_mount {
@@ -443,18 +403,18 @@ resource "kubernetes_deployment" "superset_worker" {
           ]
           env {
             name = "POSTGRES_HOST"
-            value = var.superset_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.superset_postgres_port
+            value = var.postgres_port
           }
           image = var.image_busybox
           name = "wait-for-postgres"
         }
-        node_selector = var.superset_worker_node_selector
+        node_selector = var.worker_node_selector
         dynamic "toleration" {
-          for_each = var.superset_worker_tolerations
+          for_each = var.worker_tolerations
           content {
             effect = toleration.effect
             key = toleration.key
@@ -474,7 +434,7 @@ resource "kubernetes_deployment" "superset_worker" {
         }
         volume {
           config_map {
-            name = "superset-custom"
+            name = "superset-extra"
             optional = true
           }
           name = "config-custom"
@@ -483,7 +443,7 @@ resource "kubernetes_deployment" "superset_worker" {
           name = "secrets-custom"
           secret {
             optional = true
-            secret_name = "superset-custom"
+            secret_name = "superset-extra"
           }
         }
       }
@@ -497,7 +457,7 @@ resource "kubernetes_deployment" "superset" {
       app = "superset"
     }
     name = "superset"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     replicas = 1
@@ -544,35 +504,35 @@ EOT
           }
           env {
             name = "REDIS_HOST"
-            value = "superset-redis"
+            value = var.redis_host
           }
           env {
             name = "REDIS_PASSWORD"
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-redis"
+                name = var.redis_secret_name
               }
             }
           }
           env {
             name = "POSTGRES_HOST"
-            value = var.superset_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.superset_postgres_port
+            value = var.postgres_port
           }
           env {
             name = "POSTGRES_DB"
-            value = var.superset_postgres_db
+            value = var.postgres_db
           }
           env {
             name = "POSTGRES_USER"
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -581,7 +541,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -601,7 +561,7 @@ EOT
           }
           resources {
             limits = {
-              memory = "512Mi"
+              memory = var.mem_limit_server
             }
           }
           volume_mount {
@@ -651,35 +611,35 @@ EOT
           }
           env {
             name = "REDIS_HOST"
-            value = "superset-redis"
+            value = var.redis_host
           }
           env {
             name = "REDIS_PASSWORD"
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-redis"
+                name = var.redis_secret_name
               }
             }
           }
           env {
             name = "POSTGRES_HOST"
-            value = var.superset_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.superset_postgres_port
+            value = var.postgres_port
           }
           env {
             name = "POSTGRES_DB"
-            value = var.superset_postgres_db
+            value = var.postgres_db
           }
           env {
             name = "POSTGRES_USER"
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -688,7 +648,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -755,18 +715,18 @@ EOT
           ]
           env {
             name = "POSTGRES_HOST"
-            value = var.superset_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.superset_postgres_port
+            value = var.postgres_port
           }
           image = var.image_busybox
           name = "wait-for-postgres"
         }
-        node_selector = var.superset_app_node_selector
+        node_selector = var.app_node_selector
         dynamic "toleration" {
-          for_each = var.superset_app_tolerations
+          for_each = var.app_tolerations
           content {
             effect = toleration.effect
             key = toleration.key
@@ -786,7 +746,7 @@ EOT
         }
         volume {
           config_map {
-            name = "superset-custom"
+            name = "superset-extra"
             optional = true
           }
           name = "config-custom"
@@ -795,87 +755,7 @@ EOT
           name = "secrets-custom"
           secret {
             optional = true
-            secret_name = "superset-custom"
-          }
-        }
-      }
-    }
-  }
-}
-
-resource "kubernetes_stateful_set" "superset_redis" {
-  metadata {
-    labels = {
-      app = "superset-redis"
-    }
-    name = "superset-redis"
-    namespace = "walden"
-  }
-  spec {
-    replicas = 1
-    selector {
-      match_labels = {
-        app = "superset-redis"
-      }
-    }
-    service_name = "superset-redis"
-    template {
-      metadata {
-        labels = {
-          app = "superset-redis"
-        }
-      }
-      spec {
-        container {
-          command = [
-            "/bin/sh",
-            "-c",
-            "redis-server --bind 0.0.0.0 --requirepass $REDIS_PASSWORD --loglevel $LOG_LEVEL --dir /data --maxmemory 100mb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --io-threads 3",
-          ]
-          env {
-            name = "LOG_LEVEL"
-            value = "notice"
-          }
-          env {
-            name = "REDIS_PASSWORD"
-            value_from {
-              secret_key_ref {
-                key = "pass"
-                name = "superset-redis"
-              }
-            }
-          }
-          image = var.image_redis
-          name = "server"
-          port {
-            container_port = 6379
-            name = "redis"
-          }
-          startup_probe {
-            initial_delay_seconds = 5
-            period_seconds = 10
-            tcp_socket {
-              port = "redis"
-            }
-          }
-          volume_mount {
-            mount_path = "/data"
-            name = "storage"
-          }
-        }
-      }
-    }
-    volume_claim_template {
-      metadata {
-        name = "storage"
-      }
-      spec {
-        access_modes = [
-          "ReadWriteOnce",
-        ]
-        resources {
-          requests = {
-            storage = "1Gi"
+            secret_name = "superset-extra"
           }
         }
       }

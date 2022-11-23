@@ -41,7 +41,7 @@
     -->
     <property>
         <name>fs.s3a.endpoint</name>
-        <value>minio:9000</value>
+        <value>${minio_host}:${minio_port}</value>
     </property>
     <!-- Without this, metastore will time out when creating tables. -->
     <property>

@@ -1,18 +1,20 @@
 resource "kubernetes_config_map" "metastore" {
   metadata {
     labels = {
-      app = "metastore"
+      app = var.name
     }
-    name = "metastore"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   data = {
     "metastore-site.xml.template" = templatefile(
-      "configs/metastore-site.xml.template",
+      "${path.module}/metastore-site.xml.template",
       {
-        postgres_host = var.metastore_postgres_host,
-        postgres_port = var.metastore_postgres_port,
-        postgres_db = var.metastore_postgres_db,
+        minio_host = var.minio_host,
+        minio_port = var.minio_port,
+        postgres_host = var.postgres_host,
+        postgres_port = var.postgres_port,
+        postgres_db = var.postgres_db,
       }
     )
   }
@@ -21,10 +23,10 @@ resource "kubernetes_config_map" "metastore" {
 resource "kubernetes_service" "metastore" {
   metadata {
     labels = {
-      app = "metastore"
+      app = var.name
     }
-    name = "metastore"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   spec {
     port {
@@ -33,7 +35,7 @@ resource "kubernetes_service" "metastore" {
       target_port = "metastore"
     }
     selector = {
-      app = "metastore"
+      app = var.name
     }
   }
 }
@@ -41,22 +43,22 @@ resource "kubernetes_service" "metastore" {
 resource "kubernetes_deployment" "metastore" {
   metadata {
     labels = {
-      app = "metastore"
+      app = var.name
     }
-    name = "metastore"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   spec {
     replicas = 1
     selector {
       match_labels = {
-        app = "metastore"
+        app = var.name
       }
     }
     template {
       metadata {
         labels = {
-          app = "metastore"
+          app = var.name
         }
       }
       spec {
@@ -75,13 +77,13 @@ EOT
             name = "METASTORE_PORT"
             value = "9083"
           }
-          # use whatever user/pw is provided by the secret: user provides this when !metastore_postgres_internal
+          # use whatever user/pw is provided by the secret: user provides this when !postgres_internal
           env {
             name = "POSTGRES_USER"
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "metastore-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -90,7 +92,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "metastore-postgres"
+                name = var.postgres_secret_name
               }
             }
           }
@@ -99,7 +101,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
@@ -108,7 +110,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
@@ -132,11 +134,11 @@ EOT
           ]
           env {
             name = "POSTGRES_HOST"
-            value = var.metastore_postgres_host
+            value = var.postgres_host
           }
           env {
             name = "POSTGRES_PORT"
-            value = var.metastore_postgres_port
+            value = var.postgres_port
           }
           image = var.image_busybox
           name = "wait-for-postgres"
@@ -147,7 +149,7 @@ EOT
         restart_policy = "Always"
         volume {
           config_map {
-            name = "metastore"
+            name = var.name
           }
           name = "config"
         }

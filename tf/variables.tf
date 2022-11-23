@@ -140,7 +140,7 @@ variable "superset_mem_limit_server" {
 }
 variable "superset_mem_limit_worker" {
   type = string
-  default = "1G"
+  default = "1Gi"
   description = "The memory limits for each the Superset worker pod. We start with very low values, increase to fit your system and workloads."
 }
 

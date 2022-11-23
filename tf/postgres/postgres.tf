@@ -1,35 +1,31 @@
-resource "random_password" "superset_postgres_user" {
-  count = var.superset_postgres_internal ? 1 : 0
+resource "random_password" "user" {
   length = 32
   special = false
 }
-resource "random_password" "superset_postgres_pass" {
-  count = var.superset_postgres_internal ? 1 : 0
+resource "random_password" "pass" {
   length = 32
   special = false
 }
 
-resource "kubernetes_secret" "superset_postgres" {
-  count = var.superset_postgres_internal ? 1 : 0
+resource "kubernetes_secret" "postgres" {
   metadata {
     labels = {
-      app = "superset-postgres"
+      app = var.name
     }
-    name = "superset-postgres"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   type = "Opaque"
   data = {
-    pass = random_password.superset_postgres_pass[0].result
-    user = random_password.superset_postgres_user[0].result
+    pass = random_password.pass.result
+    user = random_password.user.result
   }
 }
 
-resource "kubernetes_service" "superset_postgres" {
-  count = var.superset_postgres_internal ? 1 : 0
+resource "kubernetes_service" "postgres" {
   metadata {
-    name = "superset-postgres"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   spec {
     port {
@@ -38,29 +34,28 @@ resource "kubernetes_service" "superset_postgres" {
       target_port = "postgres"
     }
     selector = {
-      app = "superset-postgres"
+      app = var.name
     }
   }
 }
 
-resource "kubernetes_stateful_set" "superset_postgres" {
-  count = var.superset_postgres_internal ? 1 : 0
+resource "kubernetes_stateful_set" "postgres" {
   metadata {
-    name = "superset-postgres"
-    namespace = "walden"
+    name = var.name
+    namespace = var.namespace
   }
   spec {
     replicas = 1
     selector {
       match_labels = {
-        app = "superset-postgres"
+        app = var.name
       }
     }
-    service_name = "superset-postgres"
+    service_name = var.name
     template {
       metadata {
         labels = {
-          app = "superset-postgres"
+          app = var.name
         }
       }
       spec {
@@ -76,14 +71,14 @@ resource "kubernetes_stateful_set" "superset_postgres" {
           }
           env {
             name = "POSTGRES_DB"
-            value = "superset"
+            value = var.db
           }
           env {
             name = "POSTGRES_USER"
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "superset-postgres"
+                name = var.name
               }
             }
           }
@@ -92,11 +87,11 @@ resource "kubernetes_stateful_set" "superset_postgres" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-postgres"
+                name = var.name
               }
             }
           }
-          image = var.image_postgres
+          image = var.image
           name = "postgres"
           port {
             container_port = 5432
@@ -138,7 +133,7 @@ resource "kubernetes_stateful_set" "superset_postgres" {
         ]
         resources {
           requests = {
-            storage = "1Gi"
+            storage = var.storage
           }
         }
       }

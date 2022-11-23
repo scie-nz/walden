@@ -8,8 +8,8 @@ resource "kubernetes_secret" "trino_admin" {
     labels = {
       app = "trino"
     }
-    name = "trino-admin"
-    namespace = "walden"
+    name = "trino"
+    namespace = var.namespace
   }
   type = "Opaque"
   data = {
@@ -21,16 +21,19 @@ resource "kubernetes_secret" "trino_admin" {
 resource "kubernetes_config_map" "trino_catalog" {
   metadata {
     name = "trino-catalog"
-    namespace = "walden"
+    namespace = var.namespace
   }
   data = {
-    "core-site.xml" = file("configs/trinocatalog_core-site.xml")
+    "core-site.xml" = var.alluxio_enabled ? file("${path.module}/trinocatalog_core-site.xml") : ""
 
     "hive.properties" = templatefile(
-      "configs/trinocatalog_hive.properties.template",
+      "${path.module}/trinocatalog_hive.properties.template",
       {
-        minio_access_key_id = sensitive(var.minio_username)
-        minio_access_key_secret = var.minio_password == "" ? random_password.minio_admin_pass[0].result : var.minio_password,
+        alluxio_resource = var.alluxio_enabled ? "/etc/trino/catalog/core-site.xml" : ""
+        metastore_host = var.metastore_host
+        metastore_port = var.metastore_port
+        minio_host = var.minio_host
+        minio_port = var.minio_port
       }
     )
 
@@ -53,11 +56,11 @@ EOT
 resource "kubernetes_config_map" "trino_config" {
   metadata {
     name = "trino-config"
-    namespace = "walden"
+    namespace = var.namespace
   }
   data = {
     "config.properties" = templatefile(
-      "configs/trino_config.properties.template",
+      "${path.module}/trino_config.properties.template",
       {
         query_max_memory_per_node = var.trino_config_query_max_memory_per_node,
         query_max_memory = var.trino_config_query_max_memory,
@@ -65,20 +68,20 @@ resource "kubernetes_config_map" "trino_config" {
       }
     )
     "jvm-coordinator.config" = templatefile(
-      "configs/trino_jvm.config.template",
+      "${path.module}/trino_jvm.config.template",
       {
         jvm_heap = var.trino_coordinator_mem_jvm_heap,
       }
     )
     "jvm-worker.config" = templatefile(
-      "configs/trino_jvm.config.template",
+      "${path.module}/trino_jvm.config.template",
       {
         jvm_heap = var.trino_worker_mem_jvm_heap,
       }
     )
-    "log.properties" = file("configs/trino_log.properties")
-    "node.properties" = file("configs/trino_node.properties")
-    "password-authenticator.properties" = file("configs/trino_password-authenticator.properties")
+    "log.properties" = file("${path.module}/trino_log.properties")
+    "node.properties" = file("${path.module}/trino_node.properties")
+    "password-authenticator.properties" = file("${path.module}/trino_password-authenticator.properties")
     "password.db" = <<-EOT
 walden:${bcrypt(random_password.trino_admin_pass.result)}
 EOT
@@ -92,7 +95,7 @@ resource "kubernetes_service" "trino" {
       app = "trino-coordinator"
     }
     name = "trino"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     port {
@@ -130,7 +133,7 @@ resource "kubernetes_deployment" "trino_coordinator" {
       app = "trino-coordinator"
     }
     name = "trino-coordinator"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     replicas = 1
@@ -162,6 +165,24 @@ EOT
           env {
             name = "CONFIG_COORDINATOR"
             value = "true"
+          }
+          env {
+            name = "MINIO_ACCESS_KEY_ID"
+            value_from {
+              secret_key_ref {
+                key = "user"
+                name = var.minio_secret_name
+              }
+            }
+          }
+          env {
+            name = "MINIO_ACCESS_KEY_SECRET"
+            value_from {
+              secret_key_ref {
+                key = "pass"
+                name = var.minio_secret_name
+              }
+            }
           }
           env_from {
             # Custom environment variables to include in the trino nodes.
@@ -291,7 +312,7 @@ resource "kubernetes_deployment" "trino_worker" {
       app = "trino-worker"
     }
     name = "trino-worker"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     replicas = var.trino_worker_replicas
@@ -320,11 +341,28 @@ export WORKER_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
 ${var.trino_worker_startup_command} &&
 /usr/lib/trino/bin/run-trino -v
 EOT
-            ,
           ]
           env {
             name = "CONFIG_COORDINATOR"
             value = "false"
+          }
+          env {
+            name = "MINIO_ACCESS_KEY_ID"
+            value_from {
+              secret_key_ref {
+                key = "user"
+                name = var.minio_secret_name
+              }
+            }
+          }
+          env {
+            name = "MINIO_ACCESS_KEY_SECRET"
+            value_from {
+              secret_key_ref {
+                key = "pass"
+                name = var.minio_secret_name
+              }
+            }
           }
           image = var.image_trino
           liveness_probe {
@@ -441,7 +479,7 @@ EOT
               value_from {
                 secret_key_ref {
                   key = "user"
-                  name = "minio-admin"
+                  name = var.minio_secret_name
                 }
               }
             }
@@ -450,7 +488,7 @@ EOT
               value_from {
                 secret_key_ref {
                   key = "pass"
-                  name = "minio-admin"
+                  name = var.minio_secret_name
                 }
               }
             }
@@ -534,7 +572,7 @@ EOT
               value_from {
                 secret_key_ref {
                   key = "user"
-                  name = "minio-admin"
+                  name = var.minio_secret_name
                 }
               }
             }
@@ -543,7 +581,7 @@ EOT
               value_from {
                 secret_key_ref {
                   key = "pass"
-                  name = "minio-admin"
+                  name = var.minio_secret_name
                 }
               }
             }

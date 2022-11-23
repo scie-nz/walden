@@ -5,11 +5,11 @@ resource "kubernetes_config_map" "alluxio" {
       app = "alluxio"
     }
     name = "alluxio-config"
-    namespace = "walden"
+    namespace = var.namespace
   }
   data = {
     "ALLUXIO_FUSE_JAVA_OPTS" = "-Dalluxio.user.hostname=$${ALLUXIO_CLIENT_HOSTNAME} -XX:MaxDirectMemorySize=2g"
-    "ALLUXIO_JAVA_OPTS" = "-Dalluxio.master.hostname=alluxio -Dalluxio.master.journal.type=UFS -Dalluxio.master.journal.folder=/opt/alluxio/journal -Draft.server.storage.dir=/opt/alluxio/journal/JobJournal/raft -Dalluxio.security.stale.channel.purge.interval=365d -Dalluxio.master.mount.table.root.ufs=$${ALLUXIO_MASTER_MOUNT_TABLE_ROOT_UFS} -Dalluxio.master.mount.table.root.shared=true -Dalluxio.underfs.s3.endpoint=http://minio:9000/ -Dalluxio.underfs.s3.disable.dns.buckets=true -Dalluxio.underfs.s3.inherit.acl=false -Dalluxio.underfs.s3.default.mode=0777 -Dalluxio.security.login.username=alluxio -Dalluxio.security.authorization.permission.umask=000 -Dalluxio.user.file.writetype.default=CACHE_THROUGH -Dalluxio.user.file.persistence.initial.wait.time=5s -Dalluxio.user.file.persist.on.rename=true -Dalluxio.master.persistence.blacklist=hive-staging -Dalluxio.user.block.size.bytes.default=8MB"
+    "ALLUXIO_JAVA_OPTS" = "-Dalluxio.master.hostname=alluxio -Dalluxio.master.journal.type=UFS -Dalluxio.master.journal.folder=/opt/alluxio/journal -Draft.server.storage.dir=/opt/alluxio/journal/JobJournal/raft -Dalluxio.security.stale.channel.purge.interval=365d -Dalluxio.master.mount.table.root.ufs=$${ALLUXIO_MASTER_MOUNT_TABLE_ROOT_UFS} -Dalluxio.master.mount.table.root.shared=true -Dalluxio.underfs.s3.endpoint=http://${var.minio_host}:${var.minio_port}/ -Dalluxio.underfs.s3.disable.dns.buckets=true -Dalluxio.underfs.s3.inherit.acl=false -Dalluxio.underfs.s3.default.mode=0777 -Dalluxio.security.login.username=alluxio -Dalluxio.security.authorization.permission.umask=000 -Dalluxio.user.file.writetype.default=CACHE_THROUGH -Dalluxio.user.file.persistence.initial.wait.time=5s -Dalluxio.user.file.persist.on.rename=true -Dalluxio.master.persistence.blacklist=hive-staging -Dalluxio.user.block.size.bytes.default=8MB"
     "ALLUXIO_JOB_MASTER_JAVA_OPTS" = "-Dalluxio.master.hostname=$${ALLUXIO_MASTER_HOSTNAME}"
     "ALLUXIO_JOB_WORKER_JAVA_OPTS" = "-Dalluxio.worker.hostname=$${ALLUXIO_WORKER_HOSTNAME} -Dalluxio.job.worker.rpc.port=30001 -Dalluxio.job.worker.data.port=30002 -Dalluxio.job.worker.web.port=30003"
     "ALLUXIO_MASTER_JAVA_OPTS" = "-Dalluxio.master.hostname=$${ALLUXIO_MASTER_HOSTNAME}"
@@ -25,7 +25,7 @@ resource "kubernetes_service" "alluxio_web" {
       app = "alluxio-leader"
     }
     name = "alluxio-web"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     port {
@@ -46,7 +46,7 @@ resource "kubernetes_service" "alluxio" {
       app = "alluxio-leader"
     }
     name = "alluxio"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     port {
@@ -90,7 +90,7 @@ resource "kubernetes_stateful_set" "alluxio_leader" {
       app = "alluxio-leader"
     }
     name = "alluxio-leader"
-    namespace = "walden"
+    namespace = var.namespace
   }
   spec {
     pod_management_policy = "Parallel"
@@ -135,7 +135,7 @@ resource "kubernetes_stateful_set" "alluxio_leader" {
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
@@ -144,7 +144,7 @@ resource "kubernetes_stateful_set" "alluxio_leader" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
@@ -213,7 +213,7 @@ resource "kubernetes_stateful_set" "alluxio_leader" {
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
@@ -222,7 +222,7 @@ resource "kubernetes_stateful_set" "alluxio_leader" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "minio-admin"
+                name = var.minio_secret_name
               }
             }
           }
