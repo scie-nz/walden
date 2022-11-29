@@ -1,56 +1,39 @@
-resource "random_password" "trino_admin_pass" {
-  length = 32
-  special = false
-}
-
-resource "kubernetes_secret" "trino_admin" {
-  metadata {
-    labels = {
-      app = "trino"
-    }
-    name = "trino"
-    namespace = var.namespace
-  }
-  type = "Opaque"
-  data = {
-    "pass" = random_password.trino_admin_pass.result
-    "user" = "walden"
-  }
-}
-
 resource "kubernetes_config_map" "trino_catalog" {
   metadata {
     name = "trino-catalog"
     namespace = var.namespace
   }
-  data = {
-    "core-site.xml" = var.alluxio_enabled ? file("${path.module}/trinocatalog_core-site.xml") : ""
+  data = merge(
+    var.trino_extra_catalogs,
+    {
+      "core-site.xml" = var.alluxio_enabled ? file("${path.module}/trinocatalog_core-site.xml") : ""
 
-    "hive.properties" = templatefile(
-      "${path.module}/trinocatalog_hive.properties.template",
-      {
-        alluxio_resource = var.alluxio_enabled ? "/etc/trino/catalog/core-site.xml" : ""
-        metastore_host = var.metastore_host
-        metastore_port = var.metastore_port
-        minio_host = var.minio_host
-        minio_port = var.minio_port
-      }
-    )
+      "hive.properties" = templatefile(
+        "${path.module}/trinocatalog_hive.properties.template",
+        {
+          alluxio_resource = var.alluxio_enabled ? "/etc/trino/catalog/core-site.xml" : ""
+          metastore_host = var.metastore_host
+          metastore_port = var.metastore_port
+          minio_host = var.minio_host
+          minio_port = var.minio_port
+        }
+      )
 
-    "jmx.properties" = <<-EOT
+      "jmx.properties" = <<-EOT
 connector.name=jmx
 EOT
 
-    "tpch.properties" = <<-EOT
+      "tpch.properties" = <<-EOT
 connector.name=tpch
 tpch.splits-per-node=4
 EOT
 
-    "tpcds.properties" = <<-EOT
+      "tpcds.properties" = <<-EOT
 connector.name=tpcds
 tpcds.splits-per-node=4
 EOT
-  }
+    }
+  )
 }
 
 resource "kubernetes_config_map" "trino_config" {
@@ -67,25 +50,17 @@ resource "kubernetes_config_map" "trino_config" {
         memory_heap_headroom_per_node = var.trino_config_memory_heap_headroom_per_node,
       }
     )
-    "jvm-coordinator.config" = templatefile(
-      "${path.module}/trino_jvm.config.template",
-      {
-        jvm_heap = var.trino_coordinator_mem_jvm_heap,
-      }
-    )
-    "jvm-worker.config" = templatefile(
-      "${path.module}/trino_jvm.config.template",
-      {
-        jvm_heap = var.trino_worker_mem_jvm_heap,
-      }
-    )
-    "log.properties" = file("${path.module}/trino_log.properties")
-    "node.properties" = file("${path.module}/trino_node.properties")
-    "password-authenticator.properties" = file("${path.module}/trino_password-authenticator.properties")
-    "password.db" = <<-EOT
-walden:${bcrypt(random_password.trino_admin_pass.result)}
+
+    "node.properties" = <<-EOT
+node.environment=docker
+node.data-dir=/data/trino
+
+# To simplify debugging, let's include the podname/hostname directly.
+# But randomness is also required to avoid the node.id staying the same across restarts/IP changes.
+# This apparently confuses Trino's job scheduling where it tries to use the old IP even though it's
+# not listed in SELECT * FROM system.runtime.nodes anymore
+node.id=$${ENV:TRINO_NODE_ID}
 EOT
-    "postgres.properties" = ""
   }
 }
 
@@ -154,11 +129,7 @@ resource "kubernetes_deployment" "trino_coordinator" {
             "/bin/bash",
             "-c",
             <<-EOT
-mkdir -p /etc/trino/catalog &&
-cp -v /tmp/roconf/* /etc/trino &&
-cp -v /tmp/rocatalog*/* /etc/trino/catalog &&
-mv -v /etc/trino/jvm-coordinator.config /etc/trino/jvm.config &&
-export WORKER_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
+export TRINO_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
 /usr/lib/trino/bin/run-trino -v
 EOT
           ]
@@ -182,14 +153,6 @@ EOT
                 key = "pass"
                 name = var.minio_secret_name
               }
-            }
-          }
-          env_from {
-            # Custom environment variables to include in the trino nodes.
-            # This may be used for customizing configuration, e.g. OIDC authentication.
-            secret_ref {
-              name = "trino-coordinator-env-extra"
-              optional = true
             }
           }
           image = var.image_trino
@@ -239,20 +202,18 @@ EOT
             }
           }
           volume_mount {
-            mount_path = "/tmp/roconf"
+            mount_path = "/etc/trino/config.properties"
             name = "trino-config"
+            sub_path = "config.properties"
           }
           volume_mount {
-            mount_path = "/tmp/rocatalog"
+            mount_path = "/etc/trino/node.properties"
+            name = "trino-config"
+            sub_path = "node.properties"
+          }
+          volume_mount {
+            mount_path = "/etc/trino/catalog"
             name = "trino-catalog"
-          }
-          volume_mount {
-            mount_path = "/tmp/rocatalog-extra"
-            name = "trino-catalog-extra"
-          }
-          volume_mount {
-            mount_path = "/etc/trino"
-            name = "trino-etc"
           }
           volume_mount {
             mount_path = "/data/trino"
@@ -268,34 +229,23 @@ EOT
         dynamic "toleration" {
           for_each = var.trino_coordinator_tolerations
           content {
-            effect = toleration.effect
-            key = toleration.key
-            operator = toleration.operator
-            value = toleration.value
+            effect = toleration.value.effect
+            key = toleration.value.key
+            operator = toleration.value.operator
+            value = toleration.value.value
           }
         }
         volume {
           config_map {
-            name = "trino-config"
+            name = kubernetes_config_map.trino_config.metadata[0].name
           }
           name = "trino-config"
         }
         volume {
           config_map {
-            name = "trino-catalog"
+            name = kubernetes_config_map.trino_catalog.metadata[0].name
           }
           name = "trino-catalog"
-        }
-        volume {
-          config_map {
-            name = "trino-catalog-extra"
-            optional = true
-          }
-          name = "trino-catalog-extra"
-        }
-        volume {
-          empty_dir {}
-          name = "trino-etc"
         }
         volume {
           empty_dir {}
@@ -333,11 +283,8 @@ resource "kubernetes_deployment" "trino_worker" {
             "/bin/bash",
             "-c",
             <<-EOT
-mkdir -p /etc/trino/catalog /memcache/hive &&
-cp -v /tmp/roconf/* /etc/trino &&
-cp -v /tmp/rocatalog*/* /etc/trino/catalog &&
-mv -v /etc/trino/jvm-worker.config /etc/trino/jvm.config &&
-export WORKER_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
+mkdir -p /memcache/hive &&
+export TRINO_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
 ${var.trino_worker_startup_command} &&
 /usr/lib/trino/bin/run-trino -v
 EOT
@@ -411,20 +358,18 @@ EOT
             }
           }
           volume_mount {
-            mount_path = "/tmp/roconf"
+            mount_path = "/etc/trino/config.properties"
             name = "trino-config"
+            sub_path = "config.properties"
           }
           volume_mount {
-            mount_path = "/tmp/rocatalog"
+            mount_path = "/etc/trino/node.properties"
+            name = "trino-config"
+            sub_path = "node.properties"
+          }
+          volume_mount {
+            mount_path = "/etc/trino/catalog"
             name = "trino-catalog"
-          }
-          volume_mount {
-            mount_path = "/tmp/rocatalog-extra"
-            name = "trino-catalog-extra"
-          }
-          volume_mount {
-            mount_path = "/etc/trino"
-            name = "trino-etc"
           }
           volume_mount {
             mount_path = "/data/trino"
@@ -663,34 +608,23 @@ EOT
         dynamic "toleration" {
           for_each = var.trino_worker_tolerations
           content {
-            effect = toleration.effect
-            key = toleration.key
-            operator = toleration.operator
-            value = toleration.value
+            effect = toleration.value.effect
+            key = toleration.value.key
+            operator = toleration.value.operator
+            value = toleration.value.value
           }
         }
         volume {
           config_map {
-            name = "trino-config"
+            name = kubernetes_config_map.trino_config.metadata[0].name
           }
           name = "trino-config"
         }
         volume {
           config_map {
-            name = "trino-catalog"
+            name = kubernetes_config_map.trino_catalog.metadata[0].name
           }
           name = "trino-catalog"
-        }
-        volume {
-          config_map {
-            name = "trino-catalog-extra"
-            optional = true
-          }
-          name = "trino-catalog-extra"
-        }
-        volume {
-          empty_dir {}
-          name = "trino-etc"
         }
         volume {
           empty_dir {}

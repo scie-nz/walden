@@ -96,6 +96,7 @@ EOT
               }
             }
           }
+          # Provide credentials for metastore to access minio directly when creating tables.
           env {
             name = "AWS_ACCESS_KEY_ID"
             value_from {
@@ -130,7 +131,7 @@ EOT
           command = [
             "/bin/sh",
             "-c",
-            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $${POSTGRES_HOST}:$${POSTGRES_PORT}; sleep 1; done",
+            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $POSTGRES_HOST:$POSTGRES_PORT; sleep 1; done",
           ]
           env {
             name = "POSTGRES_HOST"
@@ -143,6 +144,7 @@ EOT
           image = var.image_busybox
           name = "wait-for-postgres"
         }
+        # We only build an amd64 metastore image
         node_selector = {
           "kubernetes.io/arch" = "amd64"
         }

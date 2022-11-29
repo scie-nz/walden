@@ -105,15 +105,23 @@ variable "minio_replicas" {
     error_message = "Minio requires a minimum of four replicas (minio_replicas)"
   }
 }
-variable "minio_arch" {
-  type = string
-  default = "amd64"
-  description = "The CPU architecture for Minio nodes, all nodes must be running the same arch"
-}
 variable "minio_mem_limit" {
   type = string
   default = "512M"
   description = "The memory limit for each Minio pod. Minio recommends 8GB for pods with up to 1TB storage/pod, or 16GB for up to 10TB storage/pod. We start with very low values, increase to fit your system and workloads."
+}
+variable "minio_node_selector" {
+  type = map
+  default = {"kubernetes.io/arch" = "amd64"}
+}
+variable "minio_tolerations" {
+  type = list(object({
+    effect = string
+    key = string
+    operator = string
+    value = string
+  }))
+  default = []
 }
 
 # SUPERSET
@@ -250,16 +258,6 @@ variable "trino_worker_mem_limit" {
   default = "2Gi"
   description = "The memory limits for the Trino coordinator pod. We start with very low values, increase to fit your system and workloads. Note that Alluxio workers are colocated with Trino workers, so the sum total of alluxio_mem_cache (if Alluxio is enabled) and trino_mem_limit_worker must stay below total node memory."
 }
-variable "trino_coordinator_mem_jvm_heap" {
-  type = string
-  default = "1536M"
-  description = "The value of '-Xmx' provided to the JVM in coordinators"
-}
-variable "trino_worker_mem_jvm_heap" {
-  type = string
-  default = "1536M"
-  description = "The value of '-Xmx' provided to the JVM in workers"
-}
 variable "trino_worker_mem_cache" {
   type = string
   default = "1Gi"
@@ -294,7 +292,14 @@ variable "trino_worker_startup_command" {
 variable "trino_extra_ports" {
   type = map
   default = {}
+  description = "Additional ports (name => number) for trino pods to listen on, for e.g. additional hive caches"
 }
+variable "trino_extra_catalogs" {
+  type = map
+  default = {}
+  description = "Additional catalog files (filename => content) to provide to Trino"
+}
+
 variable "trino_coordinator_node_selector" {
   type = map
   default = {"kubernetes.io/arch" = "amd64"}

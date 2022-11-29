@@ -75,5 +75,5 @@ RESULTS_BACKEND = RedisCache(
 )
 
 ####
-# User superset_config.py (from 'superset-custom' ConfigMap) begins here
+# User superset config begins here
 ####

@@ -80,7 +80,7 @@ resource "kubernetes_stateful_set" "minio" {
         app = var.name
       }
     }
-    service_name = "minio-headless"
+    service_name = "${var.name}-headless"
     template {
       metadata {
         labels = {
@@ -108,14 +108,14 @@ resource "kubernetes_stateful_set" "minio" {
           command = [
             "/bin/bash",
             "-c",
-            "minio server --console-address :8080 http://minio-{0...$${MINIO_MAX_HOSTNUM}}.minio-headless.$${NAMESPACE}.svc.cluster.local:9000/data",
+            "minio server --console-address :8080 http://${var.name}-{0...${var.replicas - 1}}.${var.name}-headless.${var.namespace}.svc.cluster.local:9000/data",
           ]
           env {
             name = "MINIO_ROOT_USER"
             value_from {
               secret_key_ref {
                 key = "user"
-                name = var.name
+                name = kubernetes_secret.minio.metadata[0].name
               }
             }
           }
@@ -124,33 +124,13 @@ resource "kubernetes_stateful_set" "minio" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = var.name
+                name = kubernetes_secret.minio.metadata[0].name
               }
             }
-          }
-          env {
-            name = "NAMESPACE"
-            value_from {
-              field_ref {
-                field_path = "metadata.namespace"
-              }
-            }
-          }
-          env {
-            name = "MINIO_MAX_HOSTNUM"
-            value = "${var.replicas - 1}"
           }
           env {
             name = "MINIO_UPDATE"
             value = "off"
-          }
-          env_from {
-            # Custom environment variables to include in the minio nodes.
-            # This may be used for customizing minio configuration, e.g. OIDC authentication.
-            secret_ref {
-              name = "minio-env-extra"
-              optional = true
-            }
           }
           image = var.image
           name = "minio"
@@ -172,8 +152,15 @@ resource "kubernetes_stateful_set" "minio" {
             name = "storage"
           }
         }
-        node_selector = {
-          "kubernetes.io/arch" = var.arch
+        node_selector = var.node_selector
+        dynamic "toleration" {
+          for_each = var.tolerations
+          content {
+            effect = toleration.value.effect
+            key = toleration.value.key
+            operator = toleration.value.operator
+            value = toleration.value.value
+          }
         }
         security_context {
           fs_group = 65534

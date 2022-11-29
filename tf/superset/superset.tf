@@ -48,13 +48,22 @@ resource "kubernetes_config_map" "superset" {
   }
   data = {
     "superset_config.py" = file("${path.module}/superset_config.py")
-    "superset_copy_configs.sh" = file("${path.module}/superset_copy_configs.sh")
-    "superset_datasources.yaml" = templatefile(
-      "${path.module}/superset_datasources.yaml.template",
-      {
-        extra_datasources = var.extra_datasources,
-      }
-    ),
+
+    "superset_datasources.yaml" = <<-EOT
+databases:
+- database_name: trino-hive
+  allow_ctas: true
+  allow_cvas: true
+  allow_run_async: true
+  extra: '{"cost_estimate_enabled":true,"allows_virtual_table_explore":true,"metadata_params":{},"engine_params":{},"schemas_allowed_for_csv_upload":[]}'
+  sqlalchemy_uri: trino://trino:80/hive
+- database_name: trino-system
+  allow_run_async: true
+  extra: '{"cost_estimate_enabled":true,"allows_virtual_table_explore":true,"metadata_params":{},"engine_params":{},"schemas_allowed_for_csv_upload":[]}'
+  sqlalchemy_uri: trino://trino:80
+${var.extra_datasources}
+EOT
+
     "superset_init.sh" = file("${path.module}/superset_init.sh")
   }
 }
@@ -114,7 +123,7 @@ resource "kubernetes_deployment" "superset_scheduler" {
             value_from {
               secret_key_ref {
                 key = "key"
-                name = "superset-key"
+                name = kubernetes_secret.superset_key.metadata[0].name
               }
             }
           }
@@ -161,14 +170,6 @@ resource "kubernetes_deployment" "superset_scheduler" {
               }
             }
           }
-          env_from {
-            # Custom environment variables to include in the superset nodes.
-            # This may be used for customizing configuration, e.g. SMTP auth
-            secret_ref {
-              name = "superset-env-extra"
-              optional = true
-            }
-          }
           image = var.image_superset
           name = "superset"
           resources {
@@ -185,35 +186,8 @@ resource "kubernetes_deployment" "superset_scheduler" {
         init_container {
           command = [
             "/bin/sh",
-            "/ro/superset_copy_configs.sh",
-          ]
-          image = var.image_busybox
-          name = "init-config"
-          volume_mount {
-            mount_path = "/out"
-            name = "config"
-          }
-          volume_mount {
-            mount_path = "/ro"
-            name = "config-ro"
-            read_only = true
-          }
-          volume_mount {
-            mount_path = "/custom"
-            name = "config-custom"
-            read_only = true
-          }
-          volume_mount {
-            mount_path = "/secrets"
-            name = "secrets-custom"
-            read_only = true
-          }
-        }
-        init_container {
-          command = [
-            "/bin/sh",
             "-c",
-            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $${POSTGRES_HOST}:$${POSTGRES_PORT}; sleep 1; done",
+            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $POSTGRES_HOST:$POSTGRES_PORT; sleep 1; done",
           ]
           env {
             name = "POSTGRES_HOST"
@@ -230,35 +204,17 @@ resource "kubernetes_deployment" "superset_scheduler" {
         dynamic "toleration" {
           for_each = var.scheduler_tolerations
           content {
-            effect = toleration.effect
-            key = toleration.key
-            operator = toleration.operator
-            value = toleration.value
+            effect = toleration.value.effect
+            key = toleration.value.key
+            operator = toleration.value.operator
+            value = toleration.value.value
           }
         }
         volume {
-          empty_dir {}
+          config_map {
+            name = kubernetes_config_map.superset.metadata[0].name
+          }
           name = "config"
-        }
-        volume {
-          config_map {
-            name = "superset"
-          }
-          name = "config-ro"
-        }
-        volume {
-          config_map {
-            name = "superset-extra"
-            optional = true
-          }
-          name = "config-custom"
-        }
-        volume {
-          name = "secrets-custom"
-          secret {
-            optional = true
-            secret_name = "superset-extra"
-          }
         }
       }
     }
@@ -300,7 +256,7 @@ resource "kubernetes_deployment" "superset_worker" {
             value_from {
               secret_key_ref {
                 key = "key"
-                name = "superset-key"
+                name = kubernetes_secret.superset_key.metadata[0].name
               }
             }
           }
@@ -347,14 +303,6 @@ resource "kubernetes_deployment" "superset_worker" {
               }
             }
           }
-          env_from {
-            # Custom environment variables to include in the superset nodes.
-            # This may be used for customizing configuration, e.g. SMTP auth
-            secret_ref {
-              name = "superset-env-extra"
-              optional = true
-            }
-          }
           image = var.image_superset
           name = "superset"
           resources {
@@ -371,35 +319,8 @@ resource "kubernetes_deployment" "superset_worker" {
         init_container {
           command = [
             "/bin/sh",
-            "/ro/superset_copy_configs.sh",
-          ]
-          image = var.image_busybox
-          name = "init-config"
-          volume_mount {
-            mount_path = "/out"
-            name = "config"
-          }
-          volume_mount {
-            mount_path = "/ro"
-            name = "config-ro"
-            read_only = true
-          }
-          volume_mount {
-            mount_path = "/custom"
-            name = "config-custom"
-            read_only = true
-          }
-          volume_mount {
-            mount_path = "/secrets"
-            name = "secrets-custom"
-            read_only = true
-          }
-        }
-        init_container {
-          command = [
-            "/bin/sh",
             "-c",
-            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $${POSTGRES_HOST}:$${POSTGRES_PORT}; sleep 1; done",
+            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $POSTGRES_HOST:$POSTGRES_PORT; sleep 1; done",
           ]
           env {
             name = "POSTGRES_HOST"
@@ -416,35 +337,17 @@ resource "kubernetes_deployment" "superset_worker" {
         dynamic "toleration" {
           for_each = var.worker_tolerations
           content {
-            effect = toleration.effect
-            key = toleration.key
-            operator = toleration.operator
-            value = toleration.value
+            effect = toleration.value.effect
+            key = toleration.value.key
+            operator = toleration.value.operator
+            value = toleration.value.value
           }
         }
         volume {
-          empty_dir {}
+          config_map {
+            name = kubernetes_config_map.superset.metadata[0].name
+          }
           name = "config"
-        }
-        volume {
-          config_map {
-            name = "superset"
-          }
-          name = "config-ro"
-        }
-        volume {
-          config_map {
-            name = "superset-extra"
-            optional = true
-          }
-          name = "config-custom"
-        }
-        volume {
-          name = "secrets-custom"
-          secret {
-            optional = true
-            secret_name = "superset-extra"
-          }
         }
       }
     }
@@ -498,7 +401,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "key"
-                name = "superset-key"
+                name = kubernetes_secret.superset_key.metadata[0].name
               }
             }
           }
@@ -543,14 +446,6 @@ EOT
                 key = "pass"
                 name = var.postgres_secret_name
               }
-            }
-          }
-          env_from {
-            # Custom environment variables to include in the superset nodes.
-            # This may be used for customizing configuration, e.g. SMTP auth
-            secret_ref {
-              name = "superset-env-extra"
-              optional = true
             }
           }
           image = var.image_superset
@@ -587,7 +482,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "user"
-                name = "superset-admin"
+                name = kubernetes_secret.superset_admin.metadata[0].name
               }
             }
           }
@@ -596,7 +491,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = "superset-admin"
+                name = kubernetes_secret.superset_admin.metadata[0].name
               }
             }
           }
@@ -605,7 +500,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "key"
-                name = "superset-key"
+                name = kubernetes_secret.superset_key.metadata[0].name
               }
             }
           }
@@ -652,14 +547,6 @@ EOT
               }
             }
           }
-          env_from {
-            # Custom environment variables to include in the superset nodes.
-            # This may be used for customizing configuration, e.g. SMTP auth
-            secret_ref {
-              name = "superset-env-extra"
-              optional = true
-            }
-          }
           image = var.image_superset
           name = "init"
           startup_probe {
@@ -683,35 +570,8 @@ EOT
         init_container {
           command = [
             "/bin/sh",
-            "/ro/superset_copy_configs.sh",
-          ]
-          image = var.image_busybox
-          name = "init-config"
-          volume_mount {
-            mount_path = "/out"
-            name = "config"
-          }
-          volume_mount {
-            mount_path = "/ro"
-            name = "config-ro"
-            read_only = true
-          }
-          volume_mount {
-            mount_path = "/custom"
-            name = "config-custom"
-            read_only = true
-          }
-          volume_mount {
-            mount_path = "/secrets"
-            name = "secrets-custom"
-            read_only = true
-          }
-        }
-        init_container {
-          command = [
-            "/bin/sh",
             "-c",
-            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $${POSTGRES_HOST}:$${POSTGRES_PORT}; sleep 1; done",
+            "until nc -zv $POSTGRES_HOST $POSTGRES_PORT -w1; do echo waiting for postgres: $POSTGRES_HOST:$POSTGRES_PORT; sleep 1; done",
           ]
           env {
             name = "POSTGRES_HOST"
@@ -728,35 +588,17 @@ EOT
         dynamic "toleration" {
           for_each = var.app_tolerations
           content {
-            effect = toleration.effect
-            key = toleration.key
-            operator = toleration.operator
-            value = toleration.value
+            effect = toleration.value.effect
+            key = toleration.value.key
+            operator = toleration.value.operator
+            value = toleration.value.value
           }
         }
         volume {
-          empty_dir {}
+          config_map {
+            name = kubernetes_config_map.superset.metadata[0].name
+          }
           name = "config"
-        }
-        volume {
-          config_map {
-            name = "superset"
-          }
-          name = "config-ro"
-        }
-        volume {
-          config_map {
-            name = "superset-extra"
-            optional = true
-          }
-          name = "config-custom"
-        }
-        volume {
-          name = "secrets-custom"
-          secret {
-            optional = true
-            secret_name = "superset-extra"
-          }
         }
       }
     }

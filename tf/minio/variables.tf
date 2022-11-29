@@ -19,11 +19,19 @@ variable "password" {
 variable "replicas" {
   type = number
 }
-variable "arch" {
-  type = string
-}
 variable "mem_limit" {
   type = string
+}
+variable "node_selector" {
+  type = map
+}
+variable "tolerations" {
+  type = list(object({
+    effect = string
+    key = string
+    operator = string
+    value = string
+  }))
 }
 variable "storage" {
   type = string

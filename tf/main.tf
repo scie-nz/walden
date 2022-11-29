@@ -66,8 +66,10 @@ module "minio" {
   username = var.minio_username
   password = var.minio_password
   replicas = var.minio_replicas
-  arch = var.minio_arch
   mem_limit = var.minio_mem_limit
+
+  node_selector = var.minio_node_selector
+  tolerations = var.minio_tolerations
 
   storage = "1Gi"
 }
@@ -151,8 +153,6 @@ module "trino" {
   trino_worker_replicas = var.trino_worker_replicas
   trino_coordinator_mem_limit = var.trino_coordinator_mem_limit
   trino_worker_mem_limit = var.trino_worker_mem_limit
-  trino_coordinator_mem_jvm_heap = var.trino_coordinator_mem_jvm_heap
-  trino_worker_mem_jvm_heap = var.trino_worker_mem_jvm_heap
   trino_worker_mem_cache = var.trino_worker_mem_cache
 
   trino_config_query_max_memory_per_node = var.trino_config_query_max_memory_per_node
@@ -161,6 +161,8 @@ module "trino" {
 
   trino_worker_startup_command = var.trino_worker_startup_command
   trino_extra_ports = var.trino_extra_ports
+  trino_extra_catalogs = var.trino_extra_catalogs
+
   trino_coordinator_node_selector = var.trino_coordinator_node_selector
   trino_worker_node_selector = var.trino_worker_node_selector
   trino_coordinator_tolerations = var.trino_coordinator_tolerations
@@ -176,5 +178,4 @@ module "devserver" {
   image = var.image_devserver
 
   minio_secret_name = "minio"
-  trino_secret_name = "trino"
 }

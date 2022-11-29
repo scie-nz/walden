@@ -76,7 +76,7 @@ resource "kubernetes_stateful_set" "redis" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = var.name
+                name = kubernetes_secret.redis.metadata[0].name
               }
             }
           }

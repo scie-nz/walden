@@ -63,7 +63,7 @@ resource "kubernetes_stateful_set" "postgres" {
           command = [
             "bash",
             "-c",
-            "mkdir -p $PGDATA && chown -R postgres:postgres \"$PGDATA\" && chmod 777 \"$PGDATA\" && /usr/local/bin/docker-entrypoint.sh postgres",
+            "mkdir -p $PGDATA && chown -R postgres:postgres $PGDATA && chmod 777 $PGDATA && /usr/local/bin/docker-entrypoint.sh postgres",
           ]
           env {
             name = "PGDATA"
@@ -78,7 +78,7 @@ resource "kubernetes_stateful_set" "postgres" {
             value_from {
               secret_key_ref {
                 key = "user"
-                name = var.name
+                name = kubernetes_secret.postgres.metadata[0].name
               }
             }
           }
@@ -87,7 +87,7 @@ resource "kubernetes_stateful_set" "postgres" {
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = var.name
+                name = kubernetes_secret.postgres.metadata[0].name
               }
             }
           }

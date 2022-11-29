@@ -60,31 +60,6 @@ resource "kubernetes_deployment" "devserver" {
               }
             }
           }
-          env {
-            name = "TRINO_USER"
-            value_from {
-              secret_key_ref {
-                key = "user"
-                name = var.trino_secret_name
-              }
-            }
-          }
-          env {
-            name = "TRINO_PASSWORD"
-            value_from {
-              secret_key_ref {
-                key = "pass"
-                name = var.trino_secret_name
-              }
-            }
-          }
-          env_from {
-            # Custom environment variables to include in the devserver pod.
-            secret_ref {
-              name = "devserver-env-extra"
-              optional = true
-            }
-          }
           image = var.image
           name = "devserver"
           resources {

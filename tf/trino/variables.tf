@@ -48,12 +48,6 @@ variable "trino_coordinator_mem_limit" {
 variable "trino_worker_mem_limit" {
   type = string
 }
-variable "trino_coordinator_mem_jvm_heap" {
-  type = string
-}
-variable "trino_worker_mem_jvm_heap" {
-  type = string
-}
 variable "trino_worker_mem_cache" {
   type = string
 }
@@ -74,6 +68,10 @@ variable "trino_worker_startup_command" {
 variable "trino_extra_ports" {
   type = map
 }
+variable "trino_extra_catalogs" {
+  type = map
+}
+
 variable "trino_coordinator_node_selector" {
   type = map
 }
