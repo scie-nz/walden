@@ -19,36 +19,17 @@ terraform {
   required_version = ">= 1.3.0"
 }
 
-resource "kubernetes_namespace" "walden" {
-  metadata {
-    name = "walden"
-  }
-}
+module "namespace" {
+  source = "./namespace"
 
-module "metastore" {
-  source = "./metastore"
-
-  namespace = kubernetes_namespace.walden.metadata[0].name
-  name = "metastore"
-
-  image_busybox = var.image_busybox
-  image_metastore = var.image_metastore
-
-  minio_host = "minio"
-  minio_port = 9000
-  minio_secret_name = "minio"
-
-  postgres_host = var.metastore_postgres_host
-  postgres_port = var.metastore_postgres_port
-  postgres_db = var.metastore_postgres_db
-  postgres_secret_name = "metastore-postgres"
+  name = var.namespace
 }
 
 module "metastore_postgres" {
   count = var.metastore_postgres_internal ? 1 : 0
   source = "./postgres"
 
-  namespace = kubernetes_namespace.walden.metadata[0].name
+  namespace = module.namespace.name
   name = "metastore-postgres"
   image = var.image_postgres
 
@@ -56,10 +37,29 @@ module "metastore_postgres" {
   storage = "1Gi"
 }
 
+module "metastore" {
+  source = "./metastore"
+
+  namespace = module.namespace.name
+  name = "metastore"
+
+  image_busybox = var.image_busybox
+  image_metastore = var.image_metastore
+
+  minio_host = "minio"
+  minio_port = 9000
+  minio_secret_name = module.minio.secret_name
+
+  postgres_host = var.metastore_postgres_host
+  postgres_port = var.metastore_postgres_port
+  postgres_db = var.metastore_postgres_db
+  postgres_secret_name = var.metastore_postgres_internal ? module.metastore_postgres[0].secret_name : "metastore-postgres"
+}
+
 module "minio" {
   source = "./minio"
 
-  namespace = kubernetes_namespace.walden.metadata[0].name
+  namespace = module.namespace.name
   name = "minio"
   image = var.image_minio
 
@@ -72,13 +72,15 @@ module "minio" {
   tolerations = var.minio_tolerations
 
   storage = "1Gi"
+  nfs_server = ""
+  nfs_path = ""
 }
 
 module "superset_postgres" {
   count = var.superset_postgres_internal ? 1 : 0
   source = "./postgres"
 
-  namespace = kubernetes_namespace.walden.metadata[0].name
+  namespace = module.namespace.name
   name = "superset-postgres"
   image = var.image_postgres
 
@@ -89,7 +91,7 @@ module "superset_postgres" {
 module "superset_redis" {
   source = "./redis"
 
-  namespace = kubernetes_namespace.walden.metadata[0].name
+  namespace = module.namespace.name
   name = "superset-redis"
   image = var.image_redis
 
@@ -100,7 +102,7 @@ module "superset_redis" {
 module "superset" {
   source = "./superset"
 
-  namespace = kubernetes_namespace.walden.metadata[0].name
+  namespace = module.namespace.name
 
   image_busybox = var.image_busybox
   image_superset = var.image_superset
@@ -114,10 +116,10 @@ module "superset" {
   postgres_host = var.superset_postgres_host
   postgres_port = var.superset_postgres_port
   postgres_db = var.superset_postgres_db
-  postgres_secret_name = "superset-postgres"
+  postgres_secret_name = var.superset_postgres_internal ? module.superset_postgres[0].secret_name : "superset-postgres"
 
   redis_host = "superset-redis"
-  redis_secret_name = "superset-redis"
+  redis_secret_name = module.superset_redis.secret_name
 
   extra_datasources = var.superset_extra_datasources
 
@@ -133,7 +135,7 @@ module "superset" {
 module "trino" {
   source = "./trino"
 
-  namespace = kubernetes_namespace.walden.metadata[0].name
+  namespace = module.namespace.name
 
   image_alluxio = var.image_alluxio
   image_busybox = var.image_busybox
@@ -144,7 +146,7 @@ module "trino" {
 
   minio_host = "minio"
   minio_port = 9000
-  minio_secret_name = "minio"
+  minio_secret_name = module.minio.secret_name
 
   alluxio_enabled = var.alluxio_enabled
   alluxio_root_mount = var.alluxio_root_mount
@@ -173,9 +175,9 @@ module "devserver" {
   count = var.devserver_enabled ? 1 : 0
   source = "./devserver"
 
-  namespace = kubernetes_namespace.walden.metadata[0].name
+  namespace = module.namespace.name
 
   image = var.image_devserver
 
-  minio_secret_name = "minio"
+  minio_secret_name = module.minio.secret_name
 }

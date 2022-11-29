@@ -24,6 +24,9 @@ resource "kubernetes_secret" "postgres" {
 
 resource "kubernetes_service" "postgres" {
   metadata {
+    labels = {
+      app = var.name
+    }
     name = var.name
     namespace = var.namespace
   }
@@ -41,6 +44,9 @@ resource "kubernetes_service" "postgres" {
 
 resource "kubernetes_stateful_set" "postgres" {
   metadata {
+    labels = {
+      app = var.name
+    }
     name = var.name
     namespace = var.namespace
   }

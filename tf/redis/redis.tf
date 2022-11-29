@@ -1,4 +1,4 @@
-resource "random_password" "redis_pass" {
+resource "random_password" "pass" {
   length = 32
   special = false
 }
@@ -13,7 +13,7 @@ resource "kubernetes_secret" "redis" {
   }
   type = "Opaque"
   data = {
-    pass = random_password.redis_pass.result
+    pass = random_password.pass.result
   }
 }
 

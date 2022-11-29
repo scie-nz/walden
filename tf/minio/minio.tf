@@ -167,19 +167,32 @@ resource "kubernetes_stateful_set" "minio" {
           run_as_group = 65534
           run_as_user = 65534
         }
+        dynamic "volume" {
+          for_each = var.nfs_server == "" ? [] : [0]
+          content {
+            name = "storage"
+            nfs {
+              server = var.nfs_server
+              path = var.nfs_path
+            }
+          }
+        }
       }
     }
-    volume_claim_template {
-      metadata {
-        name = "storage"
-      }
-      spec {
-        access_modes = [
-          "ReadWriteOnce",
-        ]
-        resources {
-          requests = {
-            storage = var.storage
+    dynamic "volume_claim_template" {
+      for_each = var.storage == "" ? [] : [0]
+      content {
+        metadata {
+          name = "storage"
+        }
+        spec {
+          access_modes = [
+            "ReadWriteOnce",
+          ]
+          resources {
+            requests = {
+              storage = var.storage
+            }
           }
         }
       }

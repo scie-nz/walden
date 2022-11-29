@@ -58,6 +58,12 @@ variable "image_superset" {
   default = "docker.io/scienz/walden-superset:2022.05.11"
 }
 
+variable "namespace" {
+  type = string
+  default = "walden"
+  description = "Kubernetes namespace where Walden should be deployed"
+}
+
 # DEVSERVER
 
 variable "devserver_enabled" {

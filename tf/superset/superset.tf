@@ -1,15 +1,15 @@
-resource "random_password" "superset_key" {
+resource "random_password" "key" {
   length = 32
   special = false
 }
 
-resource "random_password" "superset_admin_pass" {
+resource "random_password" "admin_pass" {
   count = var.password == "" ? 1 : 0
   length = 32
   special = false
 }
 
-resource "kubernetes_secret" "superset_key" {
+resource "kubernetes_secret" "key" {
   metadata {
     labels = {
       app = "superset"
@@ -19,11 +19,11 @@ resource "kubernetes_secret" "superset_key" {
   }
   type = "Opaque"
   data = {
-    key = random_password.superset_key.result
+    key = random_password.key.result
   }
 }
 
-resource "kubernetes_secret" "superset_admin" {
+resource "kubernetes_secret" "admin" {
   metadata {
     labels = {
       app = "superset"
@@ -33,7 +33,7 @@ resource "kubernetes_secret" "superset_admin" {
   }
   type = "Opaque"
   data = {
-    pass = var.password == "" ? random_password.superset_admin_pass[0].result : var.password
+    pass = var.password == "" ? random_password.admin_pass[0].result : var.password
     user = var.username
   }
 }
@@ -88,7 +88,7 @@ resource "kubernetes_service" "superset" {
   }
 }
 
-resource "kubernetes_deployment" "superset_scheduler" {
+resource "kubernetes_deployment" "scheduler" {
   metadata {
     labels = {
       app = "superset-scheduler"
@@ -123,7 +123,7 @@ resource "kubernetes_deployment" "superset_scheduler" {
             value_from {
               secret_key_ref {
                 key = "key"
-                name = kubernetes_secret.superset_key.metadata[0].name
+                name = kubernetes_secret.key.metadata[0].name
               }
             }
           }
@@ -221,7 +221,7 @@ resource "kubernetes_deployment" "superset_scheduler" {
   }
 }
 
-resource "kubernetes_deployment" "superset_worker" {
+resource "kubernetes_deployment" "worker" {
   metadata {
     labels = {
       app = "superset-worker"
@@ -256,7 +256,7 @@ resource "kubernetes_deployment" "superset_worker" {
             value_from {
               secret_key_ref {
                 key = "key"
-                name = kubernetes_secret.superset_key.metadata[0].name
+                name = kubernetes_secret.key.metadata[0].name
               }
             }
           }
@@ -401,7 +401,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "key"
-                name = kubernetes_secret.superset_key.metadata[0].name
+                name = kubernetes_secret.key.metadata[0].name
               }
             }
           }
@@ -482,7 +482,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "user"
-                name = kubernetes_secret.superset_admin.metadata[0].name
+                name = kubernetes_secret.admin.metadata[0].name
               }
             }
           }
@@ -491,7 +491,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "pass"
-                name = kubernetes_secret.superset_admin.metadata[0].name
+                name = kubernetes_secret.admin.metadata[0].name
               }
             }
           }
@@ -500,7 +500,7 @@ EOT
             value_from {
               secret_key_ref {
                 key = "key"
-                name = kubernetes_secret.superset_key.metadata[0].name
+                name = kubernetes_secret.key.metadata[0].name
               }
             }
           }
