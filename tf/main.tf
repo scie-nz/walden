@@ -152,23 +152,21 @@ module "trino" {
   alluxio_root_mount = var.alluxio_root_mount
   alluxio_mem_cache = var.alluxio_mem_cache
 
-  trino_worker_replicas = var.trino_worker_replicas
-  trino_coordinator_mem_limit = var.trino_coordinator_mem_limit
-  trino_worker_mem_limit = var.trino_worker_mem_limit
-  trino_worker_mem_cache = var.trino_worker_mem_cache
+  coordinator_worker = var.trino_coordinator_worker
+  worker_replicas = var.trino_worker_replicas
+  coordinator_mem_limit = var.trino_coordinator_mem_limit
+  worker_mem_limit = var.trino_worker_mem_limit
+  worker_mem_cache = var.trino_worker_mem_cache
+  heap_mem_percent = var.trino_heap_mem_percent
 
-  trino_config_query_max_memory_per_node = var.trino_config_query_max_memory_per_node
-  trino_config_query_max_memory = var.trino_config_query_max_memory
-  trino_config_memory_heap_headroom_per_node = var.trino_config_memory_heap_headroom_per_node
+  extra_command = var.trino_extra_command
+  extra_ports = var.trino_extra_ports
+  extra_catalogs = var.trino_extra_catalogs
 
-  trino_worker_startup_command = var.trino_worker_startup_command
-  trino_extra_ports = var.trino_extra_ports
-  trino_extra_catalogs = var.trino_extra_catalogs
-
-  trino_coordinator_node_selector = var.trino_coordinator_node_selector
-  trino_worker_node_selector = var.trino_worker_node_selector
-  trino_coordinator_tolerations = var.trino_coordinator_tolerations
-  trino_worker_tolerations = var.trino_worker_tolerations
+  coordinator_node_selector = var.trino_coordinator_node_selector
+  worker_node_selector = var.trino_worker_node_selector
+  coordinator_tolerations = var.trino_coordinator_tolerations
+  worker_tolerations = var.trino_worker_tolerations
 }
 
 module "devserver" {

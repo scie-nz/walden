@@ -39,46 +39,42 @@ variable "alluxio_mem_cache" {
   type = string
 }
 
-variable "trino_worker_replicas" {
+variable "coordinator_worker" {
+  type = bool
+}
+variable "worker_replicas" {
   type = number
 }
-variable "trino_coordinator_mem_limit" {
+variable "coordinator_mem_limit" {
   type = string
 }
-variable "trino_worker_mem_limit" {
+variable "worker_mem_limit" {
   type = string
 }
-variable "trino_worker_mem_cache" {
+variable "worker_mem_cache" {
   type = string
 }
-
-variable "trino_config_query_max_memory_per_node" {
-  type = string
-}
-variable "trino_config_query_max_memory" {
-  type = string
-}
-variable "trino_config_memory_heap_headroom_per_node" {
-  type = string
+variable "heap_mem_percent" {
+  type = number
 }
 
-variable "trino_worker_startup_command" {
+variable "extra_command" {
   type = string
 }
-variable "trino_extra_ports" {
+variable "extra_ports" {
   type = map
 }
-variable "trino_extra_catalogs" {
+variable "extra_catalogs" {
   type = map
 }
 
-variable "trino_coordinator_node_selector" {
+variable "coordinator_node_selector" {
   type = map
 }
-variable "trino_worker_node_selector" {
+variable "worker_node_selector" {
   type = map
 }
-variable "trino_coordinator_tolerations" {
+variable "coordinator_tolerations" {
   type = list(object({
     effect = string
     key = string
@@ -87,7 +83,7 @@ variable "trino_coordinator_tolerations" {
   }))
   default = []
 }
-variable "trino_worker_tolerations" {
+variable "worker_tolerations" {
   type = list(object({
     effect = string
     key = string

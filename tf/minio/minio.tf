@@ -108,7 +108,10 @@ resource "kubernetes_stateful_set" "minio" {
           command = [
             "/bin/bash",
             "-c",
-            "minio server --console-address :8080 http://${var.name}-{0...${var.replicas - 1}}.${var.name}-headless.${var.namespace}.svc.cluster.local:9000/data",
+            # different arguments if we're running in unreplicated mode
+            var.replicas == 1
+            ? "minio server --console-address :8080 /data"
+            : "minio server --console-address :8080 http://${var.name}-{0...${var.replicas - 1}}.${var.name}-headless.${var.namespace}.svc.cluster.local:9000/data",
           ]
           env {
             name = "MINIO_ROOT_USER"
@@ -128,6 +131,7 @@ resource "kubernetes_stateful_set" "minio" {
               }
             }
           }
+          # Disable phoning home
           env {
             name = "MINIO_UPDATE"
             value = "off"
@@ -162,10 +166,14 @@ resource "kubernetes_stateful_set" "minio" {
             value = toleration.value.value
           }
         }
-        security_context {
-          fs_group = 65534
-          run_as_group = 65534
-          run_as_user = 65534
+        # Run containers as nobody:nogroup, or default as root when using nfs to avoid permission issues
+        dynamic "security_context" {
+          for_each = var.nfs_server == "" ? [0] : []
+          content {
+            fs_group = 65534
+            run_as_group = 65534
+            run_as_user = 65534
+          }
         }
         dynamic "volume" {
           for_each = var.nfs_server == "" ? [] : [0]

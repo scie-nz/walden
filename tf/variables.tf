@@ -106,10 +106,6 @@ variable "minio_replicas" {
   type = number
   default = 4
   description = "The number of Minio replicas, must be at least four"
-  validation {
-    condition = var.minio_replicas >= 4
-    error_message = "Minio requires a minimum of four replicas (minio_replicas)"
-  }
 }
 variable "minio_mem_limit" {
   type = string
@@ -249,6 +245,11 @@ variable "metastore_postgres_db" {
 
 # TRINO
 
+variable "trino_coordinator_worker" {
+  type = bool
+  default = false
+  description = "Whether the coordinator should also handle workloads. For a single-node deployment, this can be enabled with trino_worker_replicas set to 0"
+}
 variable "trino_worker_replicas" {
   type = number
   default = 1
@@ -269,31 +270,16 @@ variable "trino_worker_mem_cache" {
   default = "1Gi"
   description = "RAM storage for cache used for Hive catalogs in each Trino worker."
 }
-
-# Settings for trino_config.properties
-# We start with very low values, increase to fit your system and workloads.
-# Note: query.max-memory-per-node + memory.heap-headroom-per-node cannot be larger than mem_jvm_heap
-
-variable "trino_config_query_max_memory_per_node" {
-  type = string
-  default = "1024MB"
-  description = "query.max-memory-per-node (default: trino_mem_jvm_heap_worker * 0.3)"
-}
-variable "trino_config_query_max_memory" {
-  type = string
-  default = "4GB"
-  description = "query.max-memory (default: 20GB)"
-}
-variable "trino_config_memory_heap_headroom_per_node" {
-  type = string
-  default = "512MB"
-  description = "memory.heap-headroom-per-node (default: trino_mem_jvm_heap_worker * 0.3)"
+variable "trino_heap_mem_percent" {
+  type = number
+  default = 30
+  description = "Percentage of mem_limit to allocate to heap. If this is too high then workers may be OOMKilled"
 }
 
-variable "trino_worker_startup_command" {
+variable "trino_extra_command" {
   type = string
   default = "echo starting trino..."
-  description = "A spot to insert custom commands/initialization before trino workers start"
+  description = "A spot to insert custom startup commands before launching the trino process, in both the coordinator and the workers"
 }
 variable "trino_extra_ports" {
   type = map

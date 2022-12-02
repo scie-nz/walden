@@ -4,7 +4,7 @@ resource "kubernetes_config_map" "trino_catalog" {
     namespace = var.namespace
   }
   data = merge(
-    var.trino_extra_catalogs,
+    var.extra_catalogs,
     {
       "core-site.xml" = var.alluxio_enabled ? file("${path.module}/trinocatalog_core-site.xml") : ""
 
@@ -42,17 +42,30 @@ resource "kubernetes_config_map" "trino_config" {
     namespace = var.namespace
   }
   data = {
-    "config.properties" = templatefile(
-      "${path.module}/trino_config.properties.template",
-      {
-        query_max_memory_per_node = var.trino_config_query_max_memory_per_node,
-        query_max_memory = var.trino_config_query_max_memory,
-        memory_heap_headroom_per_node = var.trino_config_memory_heap_headroom_per_node,
-      }
-    )
+    "config.properties" = <<-EOT
+coordinator=$${ENV:CONFIG_COORDINATOR}
+node-scheduler.include-coordinator=${var.coordinator_worker}
+
+# We listen on a different port to avoid issues around running as non-root
+http-server.http.port=8080
+# Meanwhile the 'trino' coordinator service is at port 80
+discovery.uri=http://trino
+
+# Increase caps on row size 8x. This may reduce errors like
+# "PageTooLargeException: Remote page is too large" when handling large arrays.
+# See also https://github.com/trinodb/trino/issues/10292
+# default 16MB:
+node-manager.http-client.max-content-length=128MB
+# default 32MB:
+exchange.http-client.max-content-length=256MB
+
+# The number of concurrent writer threads per worker per query.
+# Default: 1
+task.writer-count=2
+EOT
 
     "node.properties" = <<-EOT
-node.environment=docker
+node.environment=walden
 node.data-dir=/data/trino
 
 # To simplify debugging, let's include the podname/hostname directly.
@@ -60,6 +73,28 @@ node.data-dir=/data/trino
 # This apparently confuses Trino's job scheduling where it tries to use the old IP even though it's
 # not listed in SELECT * FROM system.runtime.nodes anymore
 node.id=$${ENV:TRINO_NODE_ID}
+EOT
+
+    # Modified from original: https://github.com/trinodb/trino/blob/master/core/docker/default/etc/jvm.config
+    # Allow customizing default [Initial|Max]RAMPercentage from 80 in docker image (avoid OOMing workers)
+    "jvm.config" = <<-EOT
+-server
+-agentpath:/usr/lib/trino/bin/libjvmkill.so
+-XX:InitialRAMPercentage=${var.heap_mem_percent}
+-XX:MaxRAMPercentage=${var.heap_mem_percent}
+-XX:G1HeapRegionSize=32M
+-XX:+ExplicitGCInvokesConcurrent
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:+ExitOnOutOfMemoryError
+-XX:-OmitStackTraceInFastThrow
+-XX:ReservedCodeCacheSize=256M
+-XX:PerMethodRecompilationCutoff=10000
+-XX:PerBytecodeRecompilationCutoff=10000
+-Djdk.attach.allowAttachSelf=true
+-Djdk.nio.maxCachedBufferSize=2000000
+# Improve AES performance for S3, etc. on ARM64 (JDK-8271567)
+-XX:+UnlockDiagnosticVMOptions
+-XX:+UseAESCTRIntrinsics
 EOT
   }
 }
@@ -89,7 +124,7 @@ resource "kubernetes_service" "trino" {
       target_port = "hivecache-bk"
     }
     dynamic "port" {
-      for_each = var.trino_extra_ports
+      for_each = var.extra_ports
       content {
         name = port.key
         port = port.value
@@ -117,6 +152,10 @@ resource "kubernetes_deployment" "trino_coordinator" {
         app = "trino-coordinator"
       }
     }
+    strategy {
+      # Avoid deployment getting stuck if nodes are full, given anti-affinity below
+      type = "Recreate"
+    }
     template {
       metadata {
         labels = {
@@ -124,12 +163,31 @@ resource "kubernetes_deployment" "trino_coordinator" {
         }
       }
       spec {
+        affinity {
+          pod_anti_affinity {
+            required_during_scheduling_ignored_during_execution {
+              label_selector {
+                match_expressions {
+                  key = "app"
+                  operator = "In"
+                  values = [
+                    "trino-coordinator",
+                    "trino-worker",
+                  ]
+                }
+              }
+              topology_key = "kubernetes.io/hostname"
+            }
+          }
+        }
         container {
           command = [
             "/bin/bash",
             "-c",
             <<-EOT
 export TRINO_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
+mkdir -p /memcache/hive &&
+${var.extra_command} &&
 /usr/lib/trino/bin/run-trino -v
 EOT
           ]
@@ -180,7 +238,7 @@ EOT
             name = "hivecache-bk"
           }
           dynamic "port" {
-            for_each = var.trino_extra_ports
+            for_each = var.extra_ports
             content {
               container_port = port.value
               name = port.key
@@ -198,7 +256,10 @@ EOT
           }
           resources {
             limits = {
-              memory = var.trino_coordinator_mem_limit
+              memory = var.coordinator_mem_limit
+            }
+            requests = {
+              memory = var.coordinator_mem_limit
             }
           }
           volume_mount {
@@ -212,6 +273,11 @@ EOT
             sub_path = "node.properties"
           }
           volume_mount {
+            mount_path = "/etc/trino/jvm.config"
+            name = "trino-config"
+            sub_path = "jvm.config"
+          }
+          volume_mount {
             mount_path = "/etc/trino/catalog"
             name = "trino-catalog"
           }
@@ -219,15 +285,22 @@ EOT
             mount_path = "/data/trino"
             name = "trino-data"
           }
+          dynamic "volume_mount" {
+            for_each = var.coordinator_worker ? ["_"] : []
+            content {
+              mount_path = "/memcache"
+              name = "trino-memcache"
+            }
+          }
         }
-        node_selector = var.trino_coordinator_node_selector
+        node_selector = var.coordinator_node_selector
         security_context {
           fs_group = 1000
           run_as_group = 1000
           run_as_user = 1000
         }
         dynamic "toleration" {
-          for_each = var.trino_coordinator_tolerations
+          for_each = var.coordinator_tolerations
           content {
             effect = toleration.value.effect
             key = toleration.value.key
@@ -251,6 +324,16 @@ EOT
           empty_dir {}
           name = "trino-data"
         }
+        dynamic "volume" {
+          for_each = var.coordinator_worker ? ["_"] : []
+          content {
+            empty_dir {
+              medium = "Memory"
+              size_limit = var.worker_mem_cache
+            }
+            name = "trino-memcache"
+          }
+        }
       }
     }
   }
@@ -265,11 +348,15 @@ resource "kubernetes_deployment" "trino_worker" {
     namespace = var.namespace
   }
   spec {
-    replicas = var.trino_worker_replicas
+    replicas = var.worker_replicas
     selector {
       match_labels = {
         app = "trino-worker"
       }
+    }
+    strategy {
+      # Avoid deployment getting stuck if nodes are full, given anti-affinity below
+      type = "Recreate"
     }
     template {
       metadata {
@@ -278,14 +365,31 @@ resource "kubernetes_deployment" "trino_worker" {
         }
       }
       spec {
+        affinity {
+          pod_anti_affinity {
+            required_during_scheduling_ignored_during_execution {
+              label_selector {
+                match_expressions {
+                  key = "app"
+                  operator = "In"
+                  values = [
+                    "trino-coordinator",
+                    "trino-worker",
+                  ]
+                }
+              }
+              topology_key = "kubernetes.io/hostname"
+            }
+          }
+        }
         container {
           command = [
             "/bin/bash",
             "-c",
             <<-EOT
-mkdir -p /memcache/hive &&
 export TRINO_NODE_ID="$${HOSTNAME}_$${RANDOM}" &&
-${var.trino_worker_startup_command} &&
+mkdir -p /memcache/hive &&
+${var.extra_command} &&
 /usr/lib/trino/bin/run-trino -v
 EOT
           ]
@@ -336,7 +440,7 @@ EOT
             name = "hivecache-bk"
           }
           dynamic "port" {
-            for_each = var.trino_extra_ports
+            for_each = var.extra_ports
             content {
               container_port = port.value
               name = port.key
@@ -354,7 +458,10 @@ EOT
           }
           resources {
             limits = {
-              memory = var.trino_worker_mem_limit
+              memory = var.worker_mem_limit
+            }
+            requests = {
+              memory = var.worker_mem_limit
             }
           }
           volume_mount {
@@ -366,6 +473,11 @@ EOT
             mount_path = "/etc/trino/node.properties"
             name = "trino-config"
             sub_path = "node.properties"
+          }
+          volume_mount {
+            mount_path = "/etc/trino/jvm.config"
+            name = "trino-config"
+            sub_path = "jvm.config"
           }
           volume_mount {
             mount_path = "/etc/trino/catalog"
@@ -598,7 +710,7 @@ EOT
             name = "wait-for-alluxio"
           }
         }
-        node_selector = var.trino_worker_node_selector
+        node_selector = var.worker_node_selector
         security_context {
           fs_group = 1000
           run_as_group = 1000
@@ -606,7 +718,7 @@ EOT
         }
         termination_grace_period_seconds = 10
         dynamic "toleration" {
-          for_each = var.trino_worker_tolerations
+          for_each = var.worker_tolerations
           content {
             effect = toleration.value.effect
             key = toleration.value.key
@@ -633,7 +745,7 @@ EOT
         volume {
           empty_dir {
             medium = "Memory"
-            size_limit = var.trino_worker_mem_cache
+            size_limit = var.worker_mem_cache
           }
           name = "trino-memcache"
         }
