@@ -46,7 +46,7 @@ variable "image_trino" {
 # See walden/docker/* for image definitions.
 variable "image_devserver" {
   type = string
-  default = "docker.io/scienz/walden-devserver:2022.05.11"
+  default = "docker.io/scienz/walden-devserver:2023.01.08"
 }
 variable "image_metastore" {
   type = string
