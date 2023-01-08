@@ -55,7 +55,7 @@ variable "image_metastore" {
 # TODO(nick): try a new image with 2.0
 variable "image_superset" {
   type = string
-  default = "docker.io/scienz/walden-superset:2022.05.11"
+  default = "docker.io/scienz/walden-superset:2023.01.08"
 }
 
 variable "namespace" {
