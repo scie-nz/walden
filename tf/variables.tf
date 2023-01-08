@@ -52,7 +52,6 @@ variable "image_metastore" {
   type = string
   default = "docker.io/scienz/walden-metastore:2022.08.01"
 }
-# TODO(nick): try a new image with 2.0
 variable "image_superset" {
   type = string
   default = "docker.io/scienz/walden-superset:2023.01.08"
