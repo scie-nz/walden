@@ -66,9 +66,12 @@ resource "kubernetes_deployment" "metastore" {
           command = [
             "/bin/bash",
             "-c",
+            # Init: Try -validate explicitly. If it works, then skip -initSchema.
+            #   When schema already exists, -initSchema can fail with 'relation "BUCKETING_COLS" already exists'
+            #   Turns out they forgot an "IF NOT EXISTS" in a "CREATE TABLE" lol
             <<-EOT
 bash -c "echo -e \"$(cat /config/metastore-site.xml.template)\" > /opt/hive-metastore/conf/metastore-site.xml" &&
-/opt/hive-metastore/bin/schematool -initSchema -dbType postgres -ifNotExists &&
+(/opt/hive-metastore/bin/schematool -validate -dbType postgres || /opt/hive-metastore/bin/schematool -initSchema -dbType postgres -ifNotExists) &&
 /opt/hive-metastore/bin/start-metastore
 EOT
             ,
