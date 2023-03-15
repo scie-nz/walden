@@ -46,15 +46,15 @@ variable "image_trino" {
 # See walden/docker/* for image definitions.
 variable "image_devserver" {
   type = string
-  default = "docker.io/scienz/walden-devserver:2023.01.08"
+  default = "ghcr.io/scie-nz/walden:devserver-2023.01.08"
 }
 variable "image_metastore" {
   type = string
-  default = "docker.io/scienz/walden-metastore:2022.08.01"
+  default = "ghcr.io/scie-nz/walden:metastore-2022.08.01"
 }
 variable "image_superset" {
   type = string
-  default = "docker.io/scienz/walden-superset:2023.01.08"
+  default = "ghcr.io/scie-nz/walden:superset-2023.01.08"
 }
 
 variable "namespace" {
