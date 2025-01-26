@@ -4,13 +4,6 @@
 # 2. Add rows to 'terraform.tfvars' for any overrides: varname = varvalue
 # 3. Deploy with 'tf apply'
 
-variable "image_alluxio" {
-  type = string
-  description = "Stick with a server version matching the client library version in Trino"
-  # https://hub.docker.com/r/alluxio/alluxio/tags
-  default = "docker.io/alluxio/alluxio:2.7.3"
-}
-
 variable "image_busybox" {
   type = string
   description = "Utility image for initContainers: config templating, waiting for dependencies to start."
@@ -69,24 +62,6 @@ variable "devserver_enabled" {
   type = bool
   default = true
   description = "Enables 'devserver' pod that's been preconfigured with access to Minio/Trino."
-}
-
-# ALLUXIO
-
-variable "alluxio_enabled" {
-  type = bool
-  default = false
-  description = "Enables Alluxio for additional managed data sources, along with caching of those sources. By default, Trino's Hive cache is often sufficient, but enabling Alluxio may be useful for supporting additional networked volume types that are not natively supported with Trino/Hive."
-}
-variable "alluxio_root_mount" {
-  type = string
-  default = "s3://alluxio/"
-  description = "The root mount to be accessed by Alluxio. By default this is a Minio bucket named 'alluxio'. The 'alluxio' bucket must be created in Minio manually - see walden README for example. Alluxio is preconfigured with the Minio endpoint and credentials. Other options include an NFS mount, which can be enabled via the following option."
-}
-variable "alluxio_mem_cache" {
-  type = string
-  default = "1G"
-  description = "The size of the ramdisk to use as cache in each Alluxio/Trino worker. This can greatly speed up repeat access to data via Alluxio. This is allocated as a ramdisk on startup, and is 'used' even if the workers are idle. Note that Alluxio workers are colocated with Trino workers, so the sum total of alluxio.mem_cache and trino.mem_limit_worker must stay below total node memory."
 }
 
 # MINIO
@@ -252,7 +227,7 @@ variable "trino_coordinator_worker" {
 variable "trino_worker_replicas" {
   type = number
   default = 1
-  description = "Number of worker replicas. Each replica also gets an Alluxio worker, if Alluxio is enabled."
+  description = "Number of Trino worker instances"
 }
 variable "trino_coordinator_mem_limit" {
   type = string
@@ -262,7 +237,7 @@ variable "trino_coordinator_mem_limit" {
 variable "trino_worker_mem_limit" {
   type = string
   default = "2Gi"
-  description = "The memory limits for the Trino coordinator pod. We start with very low values, increase to fit your system and workloads. Note that Alluxio workers are colocated with Trino workers, so the sum total of alluxio_mem_cache (if Alluxio is enabled) and trino_mem_limit_worker must stay below total node memory."
+  description = "The memory limits for the Trino coordinator pod. We start with very low values, increase to fit your system and workloads."
 }
 variable "trino_worker_mem_cache" {
   type = string

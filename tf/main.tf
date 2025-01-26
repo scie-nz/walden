@@ -137,7 +137,6 @@ module "trino" {
 
   namespace = module.namespace.name
 
-  image_alluxio = var.image_alluxio
   image_busybox = var.image_busybox
   image_trino = var.image_trino
 
@@ -147,10 +146,6 @@ module "trino" {
   minio_host = "minio"
   minio_port = 9000
   minio_secret_name = module.minio.secret_name
-
-  alluxio_enabled = var.alluxio_enabled
-  alluxio_root_mount = var.alluxio_root_mount
-  alluxio_mem_cache = var.alluxio_mem_cache
 
   coordinator_worker = var.trino_coordinator_worker
   worker_replicas = var.trino_worker_replicas

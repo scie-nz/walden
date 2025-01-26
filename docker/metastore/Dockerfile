@@ -5,7 +5,6 @@ FROM ubuntu:22.04
 
 ENV HADOOP_VERSION=3.3.1 \
   METASTORE_VERSION=3.1.3 \
-  ALLUXIO_VERSION=2.7.3 \
   POSTGRES_JDBC_VERSION=42.3.2 \
   AWS_SDK_JAR_VERSION=1.11.901 \
   HADOOP_HOME=/opt/hadoop \
@@ -31,9 +30,6 @@ RUN mkdir -p $HIVE_HOME/lib \
   && mv -v hadoop-${HADOOP_VERSION}/* $HADOOP_HOME \
   && rmdir -v hadoop-${HADOOP_VERSION} \
   \
-  && curl -O https://repo1.maven.org/maven2/org/alluxio/alluxio-shaded-client/${ALLUXIO_VERSION}/alluxio-shaded-client-${ALLUXIO_VERSION}.jar \
-  && mv -v alluxio-shaded-client-${ALLUXIO_VERSION}.jar $HIVE_HOME/lib/ \
-  \
   && curl -O https://jdbc.postgresql.org/download/postgresql-${POSTGRES_JDBC_VERSION}.jar \
   && mv -v postgresql-${POSTGRES_JDBC_VERSION}.jar $HIVE_HOME/lib/ \
   \
@@ -47,4 +43,4 @@ RUN mkdir -p $HIVE_HOME/lib \
 
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 \
   HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$HIVE_HOME/lib/aws-java-sdk-bundle-$AWS_SDK_JAR_VERSION.jar:$HIVE_HOME/lib/hadoop-aws-$HADOOP_VERSION.jar:$HIVE_HOME/lib/postgresql-$POSTGRES_JDBC_VERSION.jar \
-  METASTORE_AUX_JARS_PATH=$HIVE_HOME/lib/aws-java-sdk-bundle-$AWS_SDK_JAR_VERSION.jar:$HIVE_HOME/lib/hadoop-aws-$HADOOP_VERSION.jar:$HIVE_HOME/lib/alluxio-shaded-client-$ALLUXIO_VERSION.jar
+  METASTORE_AUX_JARS_PATH=$HIVE_HOME/lib/aws-java-sdk-bundle-$AWS_SDK_JAR_VERSION.jar:$HIVE_HOME/lib/hadoop-aws-$HADOOP_VERSION.jar

@@ -8,7 +8,6 @@ hive.allow-rename-column=true
 hive.allow-rename-table=true
 hive.cache.enabled=true
 hive.cache.location=/memcache/hive
-hive.config.resources=${alluxio_resource}
 hive.metastore.uri=thrift://${metastore_host}:${metastore_port}
 hive.metastore-cache-ttl=10s
 hive.metastore-timeout=60s

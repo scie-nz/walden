@@ -2,9 +2,6 @@ variable "namespace" {
   type = string
 }
 
-variable "image_alluxio" {
-  type = string
-}
 variable "image_busybox" {
   type = string
 }
@@ -26,16 +23,6 @@ variable "minio_port" {
   type = number
 }
 variable "minio_secret_name" {
-  type = string
-}
-
-variable "alluxio_enabled" {
-  type = bool
-}
-variable "alluxio_root_mount" {
-  type = string
-}
-variable "alluxio_mem_cache" {
   type = string
 }
 
