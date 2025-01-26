@@ -2,21 +2,20 @@ provider "kubernetes" {
   experiments {
     manifest_resource = true
   }
-  config_path = "~/.kube/config-walden"
+  config_path = "~/.kube/config"
 }
 
 terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "2.16.0"
+      version = "2.35.1"
     }
     random = {
       source = "hashicorp/random"
-      version = "3.4.3"
+      version = "3.6.3"
     }
   }
-  required_version = ">= 1.3.0"
 }
 
 module "namespace" {

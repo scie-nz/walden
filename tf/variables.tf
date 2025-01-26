@@ -13,26 +13,27 @@ variable "image_busybox" {
 variable "image_minio" {
   type = string
   # https://hub.docker.com/r/minio/minio/tags
-  default = "docker.io/minio/minio:RELEASE.2022-11-17T23-20-09Z"
+  default = "docker.io/minio/minio:RELEASE.2025-01-20T14-49-07Z"
 }
 
 variable "image_postgres" {
   type = string
   description = "Changes to the Postgres major version require manually upgrading the on-disk data."
-  # https://hub.docker.com/r/_/postgres/tags
-  default = "docker.io/library/postgres:15.1-bullseye"
+  # https://hub.docker.com/_/postgres/tags
+  default = "docker.io/library/postgres:17.2-bookworm"
 }
 
 variable "image_redis" {
   type = string
   # https://hub.docker.com/_/redis/tags
-  default = "docker.io/library/redis:7.0.5-bullseye"
+  # Sticking with the final BSD-licensed version
+  default = "docker.io/library/redis:7.2.4-bookworm"
 }
 
 variable "image_trino" {
   type = string
   # https://hub.docker.com/r/trinodb/trino/tags
-  default = "docker.io/trinodb/trino:403"
+  default = "docker.io/trinodb/trino:468"
 }
 
 # The latest release versions for Walden images.
@@ -41,6 +42,8 @@ variable "image_devserver" {
   type = string
   default = "ghcr.io/scie-nz/walden:devserver-2023.01.08"
 }
+# In theory there's a 4.0.1 release of standalone metastore, but it's just got a src tgz.
+# So we stick with 3.1.3 from 2022 for now. A future version of Walden might replace metastore anyway.
 variable "image_metastore" {
   type = string
   default = "ghcr.io/scie-nz/walden:metastore-2022.08.01"
