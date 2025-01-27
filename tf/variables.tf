@@ -208,23 +208,31 @@ variable "trino_worker_replicas" {
 }
 variable "trino_coordinator_mem_limit" {
   type = string
-  default = "2Gi"
+  default = "3Gi"
   description = "The memory limits for the Trino coordinator pod. We start with very low values, increase to fit your system and workloads."
 }
 variable "trino_worker_mem_limit" {
   type = string
-  default = "2Gi"
+  default = "3Gi"
   description = "The memory limits for the Trino coordinator pod. We start with very low values, increase to fit your system and workloads."
 }
 variable "trino_coordinator_max_heap" {
   type = string
-  default = "1Gi"
+  default = "2G"
   description = "Amount of memory to allocate to heap, e.g. 30% of trino_coordinator_mem_limit. If this is too high then workers may be OOMKilled"
 }
 variable "trino_worker_max_heap" {
   type = string
-  default = "1Gi"
+  default = "2G"
   description = "Amount of memory to allocate to heap, e.g. 30% of trino_worker_mem_limit. If this is too high then workers may be OOMKilled"
+}
+variable "trino_coordinator_max_query_memory" {
+  type = string
+  default = "1GB"
+}
+variable "trino_worker_max_query_memory" {
+  type = string
+  default = "1GB"
 }
 
 variable "trino_extra_catalogs" {

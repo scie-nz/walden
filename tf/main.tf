@@ -136,6 +136,7 @@ resource "helm_release" "trino" {
     name = "server.workers"
     value = var.trino_worker_replicas
   }
+
   set {
     name = "coordinator.resources.limits.memory"
     value = var.trino_coordinator_mem_limit
@@ -149,6 +150,11 @@ resource "helm_release" "trino" {
     value = var.trino_coordinator_max_heap
   }
   set {
+    name = "coordinator.config.query.maxMemoryPerNode"
+    value = var.trino_coordinator_max_query_memory
+  }
+
+  set {
     name = "worker.resources.limits.memory"
     value = var.trino_worker_mem_limit
   }
@@ -160,6 +166,11 @@ resource "helm_release" "trino" {
     name = "worker.jvm.maxHeapSize"
     value = var.trino_worker_max_heap
   }
+  set {
+    name = "worker.config.query.maxMemoryPerNode"
+    value = var.trino_worker_max_query_memory
+  }
+
   // TODO datatypes bad on these
   /*set {
     name = "catalogs"
