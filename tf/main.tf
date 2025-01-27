@@ -2,8 +2,18 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
 terraform {
   required_providers {
+    helm = {
+      source = "hashicorp/helm"
+      version = "2.17.0"
+    }
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = "2.35.1"
@@ -21,35 +31,77 @@ module "namespace" {
   name = var.namespace
 }
 
-module "metastore_postgres" {
-  count = var.metastore_postgres_internal ? 1 : 0
+module "nessie_postgres" {
+  count = var.nessie_postgres_internal ? 1 : 0
   source = "./postgres"
 
   namespace = module.namespace.name
-  name = "metastore-postgres"
+  name = "nessie-postgres"
   image = var.image_postgres
 
-  db = var.metastore_postgres_db
+  db = "nessie"
   storage = "1Gi"
 }
 
-module "metastore" {
-  source = "./metastore"
+resource "helm_release" "nessie" {
+  name       = "nessie"
+  namespace  = module.namespace.name
+  repository = "https://charts.projectnessie.org/"
+  chart      = "nessie"
+  # latest from https://projectnessie.org/nessie-latest/
+  version    = "0.102.2"
 
-  namespace = module.namespace.name
-  name = "metastore"
-
-  image_busybox = var.image_busybox
-  image_metastore = var.image_metastore
-
-  minio_host = "minio"
-  minio_port = 9000
-  minio_secret_name = module.minio.secret_name
-
-  postgres_host = var.metastore_postgres_host
-  postgres_port = var.metastore_postgres_port
-  postgres_db = var.metastore_postgres_db
-  postgres_secret_name = var.metastore_postgres_internal ? module.metastore_postgres[0].secret_name : "metastore-postgres"
+  set {
+    name = "versionStoreType"
+    value = "JDBC2"
+  }
+  set {
+    name = "jdbc.jdbcUrl"
+    value = var.nessie_postgres_internal ? "jdbc:postgresql://nessie-postgres:5432/nessie" : var.nessie_postgres_url
+  }
+  set {
+    name = "jdbc.secret.name"
+    value = var.nessie_postgres_internal ? "nessie-postgres" : ""
+  }
+  set {
+    name = "jdbc.secret.username"
+    value = "user"
+  }
+  set {
+    name = "jdbc.secret.password"
+    value = "pass"
+  }
+  # Object store settings.
+  # This example uses MinIO as the object store.
+  set {
+    name = "catalog.iceberg.defaultWarehouse"
+    value = "warehouse"
+  }
+  set {
+    name = "catalog.iceberg.warehouses[0].location"
+    value = "s3://demobucket/"
+  }
+  set {
+    name = "catalog.storage.s3.defaultOptions.pathStyleAccess"
+    value = "true"
+  }
+  set {
+    name = "catalog.storage.s3.defaultOptions.accessKeySecret.name"
+    value = "minio"
+  }
+  set {
+    name = "catalog.storage.s3.defaultOptions.accessKeySecret.awsAccessKeyId"
+    value = "user"
+  }
+  set {
+    name = "catalog.storage.s3.defaultOptions.accessKeySecret.awsAccessKeyId"
+    value = "pass"
+  }
+  # MinIO endpoint
+  set {
+    name = "catalog.storage.s3.defaultOptions.endpoint"
+    value = "http://minio:9000/"
+  }
 }
 
 module "minio" {
@@ -72,93 +124,58 @@ module "minio" {
   nfs_path = ""
 }
 
-module "superset_postgres" {
-  count = var.superset_postgres_internal ? 1 : 0
-  source = "./postgres"
+resource "helm_release" "trino" {
+  name       = "trino"
+  namespace  = module.namespace.name
+  repository = "https://trinodb.github.io/charts"
+  chart      = "trino"
+  # latest from https://github.com/trinodb/charts/
+  version    = "1.36.0"
 
-  namespace = module.namespace.name
-  name = "superset-postgres"
-  image = var.image_postgres
-
-  db = var.superset_postgres_db
-  storage = "1Gi"
+  set {
+    name = "server.workers"
+    value = var.trino_worker_replicas
+  }
+  set {
+    name = "coordinator.resources.limits.memory"
+    value = var.trino_coordinator_mem_limit
+  }
+  set {
+    name = "coordinator.resources.requests.memory"
+    value = var.trino_coordinator_mem_limit
+  }
+  set {
+    name = "coordinator.jvm.maxHeapSize"
+    value = var.trino_coordinator_max_heap
+  }
+  set {
+    name = "worker.resources.limits.memory"
+    value = var.trino_worker_mem_limit
+  }
+  set {
+    name = "worker.resources.requests.memory"
+    value = var.trino_worker_mem_limit
+  }
+  set {
+    name = "worker.jvm.maxHeapSize"
+    value = var.trino_worker_max_heap
+  }
+  // TODO datatypes bad on these
+  /*set {
+    name = "catalogs"
+    value = "{\"iceberg\":\"connector.name=iceberg-nessie\niceberg.catalog.type=nessie\niceberg.file-format=ORC\niceberg.nessie-catalog.uri=http://nessie:19120/api/v2\n\",\"tpcds\":\"connector.name=tpcds\ntpcds.splits-per-node=4\n\",\"tpch\":\"connector.name=tpch\ntpch.splits-per-node=4\n\"}"
+  }
+  set {
+    name = "coordinator.nodeSelector"
+    value = "${var.trino_coordinator_node_selector}"
+  }
+  set {
+    name = "worker.nodeSelector"
+    value = "${var.trino_worker_node_selector}"
+  }*/
 }
 
-module "superset_redis" {
-  source = "./redis"
-
-  namespace = module.namespace.name
-  name = "superset-redis"
-  image = var.image_redis
-
-  max_memory = "100mb"
-  storage = "1Gi"
-}
-
-module "superset" {
-  source = "./superset"
-
-  namespace = module.namespace.name
-
-  image_busybox = var.image_busybox
-  image_superset = var.image_superset
-
-  username = var.superset_username
-  password = var.superset_password
-  worker_replicas = var.superset_worker_replicas
-  mem_limit_server = var.superset_mem_limit_server
-  mem_limit_worker = var.superset_mem_limit_worker
-
-  postgres_host = var.superset_postgres_host
-  postgres_port = var.superset_postgres_port
-  postgres_db = var.superset_postgres_db
-  postgres_secret_name = var.superset_postgres_internal ? module.superset_postgres[0].secret_name : "superset-postgres"
-
-  redis_host = "superset-redis"
-  redis_secret_name = module.superset_redis.secret_name
-
-  extra_datasources = var.superset_extra_datasources
-
-  scheduler_node_selector = var.superset_scheduler_node_selector
-  worker_node_selector = var.superset_worker_node_selector
-  app_node_selector = var.superset_app_node_selector
-
-  scheduler_tolerations = var.superset_scheduler_tolerations
-  worker_tolerations = var.superset_worker_tolerations
-  app_tolerations = var.superset_app_tolerations
-}
-
-module "trino" {
-  source = "./trino"
-
-  namespace = module.namespace.name
-
-  image_busybox = var.image_busybox
-  image_trino = var.image_trino
-
-  metastore_host = "metastore"
-  metastore_port = 9083
-
-  minio_host = "minio"
-  minio_port = 9000
-  minio_secret_name = module.minio.secret_name
-
-  coordinator_worker = var.trino_coordinator_worker
-  worker_replicas = var.trino_worker_replicas
-  coordinator_mem_limit = var.trino_coordinator_mem_limit
-  worker_mem_limit = var.trino_worker_mem_limit
-  worker_mem_cache = var.trino_worker_mem_cache
-  heap_mem_percent = var.trino_heap_mem_percent
-
-  extra_command = var.trino_extra_command
-  extra_ports = var.trino_extra_ports
-  extra_catalogs = var.trino_extra_catalogs
-
-  coordinator_node_selector = var.trino_coordinator_node_selector
-  worker_node_selector = var.trino_worker_node_selector
-  coordinator_tolerations = var.trino_coordinator_tolerations
-  worker_tolerations = var.trino_worker_tolerations
-}
+// TODO superset chart
 
 module "devserver" {
   count = var.devserver_enabled ? 1 : 0
