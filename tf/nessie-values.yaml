@@ -1,0 +1,22 @@
+versionStoreType: JDBC2
+jdbc:
+  jdbcUrl: "${jdbc_url}"
+  secret:
+    name: "${jdbc_secret_name}"
+    username: user
+    password: pass
+catalog:
+  iceberg:
+    defaultWarehouse: warehouse
+    warehouses:
+    - name: warehouse
+      location: "s3://demobucket/"
+  storage:
+    s3:
+      defaultOptions:
+        endpoint: "http://minio:9000/"
+        pathStyleAccess: true
+      accessKeySecret:
+        name: minio
+        awsAccessKeyId: user
+        awsSecretAccessKey: pass

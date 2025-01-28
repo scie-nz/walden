@@ -51,57 +51,12 @@ resource "helm_release" "nessie" {
   # latest from https://projectnessie.org/nessie-latest/
   version    = "0.102.2"
 
-  set {
-    name = "versionStoreType"
-    value = "JDBC2"
-  }
-  set {
-    name = "jdbc.jdbcUrl"
-    value = var.nessie_postgres_internal ? "jdbc:postgresql://nessie-postgres:5432/nessie" : var.nessie_postgres_url
-  }
-  set {
-    name = "jdbc.secret.name"
-    value = var.nessie_postgres_internal ? "nessie-postgres" : ""
-  }
-  set {
-    name = "jdbc.secret.username"
-    value = "user"
-  }
-  set {
-    name = "jdbc.secret.password"
-    value = "pass"
-  }
-  # Object store settings.
-  # This example uses MinIO as the object store.
-  set {
-    name = "catalog.iceberg.defaultWarehouse"
-    value = "warehouse"
-  }
-  set {
-    name = "catalog.iceberg.warehouses[0].location"
-    value = "s3://demobucket/"
-  }
-  set {
-    name = "catalog.storage.s3.defaultOptions.pathStyleAccess"
-    value = "true"
-  }
-  set {
-    name = "catalog.storage.s3.defaultOptions.accessKeySecret.name"
-    value = "minio"
-  }
-  set {
-    name = "catalog.storage.s3.defaultOptions.accessKeySecret.awsAccessKeyId"
-    value = "user"
-  }
-  set {
-    name = "catalog.storage.s3.defaultOptions.accessKeySecret.awsAccessKeyId"
-    value = "pass"
-  }
-  # MinIO endpoint
-  set {
-    name = "catalog.storage.s3.defaultOptions.endpoint"
-    value = "http://minio:9000/"
-  }
+  values = [
+    templatefile("${path.module}/nessie-values.yaml", {
+      jdbc_url = var.nessie_postgres_internal ? "jdbc:postgresql://nessie-postgres:5432/nessie" : var.nessie_postgres_url
+      jdbc_secret_name = var.nessie_postgres_internal ? "nessie-postgres" : ""
+    })
+  ]
 }
 
 module "minio" {
@@ -132,61 +87,31 @@ resource "helm_release" "trino" {
   # latest from https://github.com/trinodb/charts/
   version    = "1.36.0"
 
-  set {
-    name = "server.workers"
-    value = var.trino_worker_replicas
-  }
+  values = [
+    templatefile("${path.module}/trino-values.yaml", {
+      catalogs = yamlencode(merge({
+        iceberg = <<EOT
+connector.name = iceberg-nessie
+iceberg.catalog.type = nessie
+iceberg.file-format = ORC
+iceberg.nessie-catalog.uri = "http://nessie:19120/api/v2"
+EOT
+      }, var.trino_extra_catalogs))
 
-  set {
-    name = "coordinator.resources.limits.memory"
-    value = var.trino_coordinator_mem_limit
-  }
-  set {
-    name = "coordinator.resources.requests.memory"
-    value = var.trino_coordinator_mem_limit
-  }
-  set {
-    name = "coordinator.jvm.maxHeapSize"
-    value = var.trino_coordinator_max_heap
-  }
-  set {
-    name = "coordinator.config.query.maxMemoryPerNode"
-    value = var.trino_coordinator_max_query_memory
-  }
+      worker_replicas = var.trino_worker_replicas
 
-  set {
-    name = "worker.resources.limits.memory"
-    value = var.trino_worker_mem_limit
-  }
-  set {
-    name = "worker.resources.requests.memory"
-    value = var.trino_worker_mem_limit
-  }
-  set {
-    name = "worker.jvm.maxHeapSize"
-    value = var.trino_worker_max_heap
-  }
-  set {
-    name = "worker.config.query.maxMemoryPerNode"
-    value = var.trino_worker_max_query_memory
-  }
+      coordinator_node_selector   = var.trino_coordinator_node_selector
+      coordinator_mem_limit       = var.trino_coordinator_mem_limit
+      coordinator_max_heap        = var.trino_coordinator_max_heap
+      coordinator_query_mem_limit = var.trino_coordinator_query_mem_limit
 
-  // TODO datatypes bad on these
-  /*set {
-    name = "catalogs"
-    value = "{\"iceberg\":\"connector.name=iceberg-nessie\niceberg.catalog.type=nessie\niceberg.file-format=ORC\niceberg.nessie-catalog.uri=http://nessie:19120/api/v2\n\",\"tpcds\":\"connector.name=tpcds\ntpcds.splits-per-node=4\n\",\"tpch\":\"connector.name=tpch\ntpch.splits-per-node=4\n\"}"
-  }
-  set {
-    name = "coordinator.nodeSelector"
-    value = "${var.trino_coordinator_node_selector}"
-  }
-  set {
-    name = "worker.nodeSelector"
-    value = "${var.trino_worker_node_selector}"
-  }*/
+      worker_node_selector   = var.trino_worker_node_selector
+      worker_mem_limit       = var.trino_worker_mem_limit
+      worker_max_heap        = var.trino_worker_max_heap
+      worker_query_mem_limit = var.trino_worker_query_mem_limit
+    })
+  ]
 }
-
-// TODO superset chart
 
 module "devserver" {
   count = var.devserver_enabled ? 1 : 0

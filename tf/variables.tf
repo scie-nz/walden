@@ -226,18 +226,27 @@ variable "trino_worker_max_heap" {
   default = "2G"
   description = "Amount of memory to allocate to heap, e.g. 30% of trino_worker_mem_limit. If this is too high then workers may be OOMKilled"
 }
-variable "trino_coordinator_max_query_memory" {
+variable "trino_coordinator_query_mem_limit" {
   type = string
   default = "1GB"
 }
-variable "trino_worker_max_query_memory" {
+variable "trino_worker_query_mem_limit" {
   type = string
   default = "1GB"
 }
 
 variable "trino_extra_catalogs" {
   type = map
-  default = {}
+  default = {
+    tpcds = <<EOT
+connector.name = tpcds
+tpcds.splits-per-node = 4
+EOT
+    tpch = <<EOT
+connector.name=tpch
+tpch.splits-per-node=4
+EOT
+  }
   description = "Additional catalog files (filename => content) to provide to Trino"
 }
 

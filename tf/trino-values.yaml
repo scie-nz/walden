@@ -1,0 +1,26 @@
+server:
+  workers: ${worker_replicas}
+coordinator:
+  nodeSelector: ${coordinator_node_selector}
+  config:
+    query:
+      maxMemoryPerNode: ${coordinator_query_mem_limit}
+  resources:
+    limits:
+      memory: ${coordinator_mem_limit}
+    requests:
+      memory: ${coordinator_mem_limit}
+  jvm:
+    maxHeapSize: ${coordinator_max_heap}
+worker:
+  nodeSelector: ${worker_node_selector}
+  config:
+    query:
+      maxMemoryPerNode: ${worker_query_mem_limit}
+  resources:
+    limits:
+      memory: ${worker_mem_limit}
+    requests:
+      memory: ${worker_mem_limit}
+  jvm:
+    maxHeapSize: ${worker_max_heap}
